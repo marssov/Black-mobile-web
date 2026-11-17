@@ -2,66 +2,164 @@
 <html lang="ru" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Вход · BLACK MOBILE</title>
-    <script src="https://tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Вход · {{ project_name }}</title>
+    <link rel="preconnect" href="https://googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     {% if admin and admin.status == 'pending' %}
     <meta http-equiv="refresh" content="5">
     {% endif %}
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: radial-gradient(circle at top, #1E1518 0%, #0D1014 60%);
+            color: #F8FAFC;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .login-card {
+            width: 100%;
+            max-width: 400px;
+            background: #15191F;
+            border: 1px solid #262C36;
+            border-radius: 20px;
+            padding: 28px 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+        }
+        .brand-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            margin-bottom: 26px;
+        }
+        .logo-badge {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #EF4444, #991B1B);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 20px;
+            color: #FFF;
+            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
+            margin-bottom: 14px;
+            overflow: hidden;
+        }
+        .logo-badge img { width: 100%; height: 100%; object-fit: cover; }
+        .project-title {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            color: #FFFFFF;
+        }
+        .project-sub {
+            font-size: 13px;
+            color: #94A3B8;
+            margin-top: 4px;
+        }
+        .form-group { margin-bottom: 16px; }
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #CBD5E1;
+            margin-bottom: 8px;
+        }
+        .form-input {
+            width: 100%;
+            height: 48px;
+            padding: 0 15px;
+            border-radius: 12px;
+            background: #0D1014;
+            border: 1px solid #2A313C;
+            color: #FFFFFF;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 500;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input::placeholder { color: #475569; }
+        .form-input:focus {
+            border-color: #EF4444;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+        }
+        .submit-btn {
+            width: 100%;
+            height: 50px;
+            margin-top: 6px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #EF4444, #DC2626);
+            color: #FFFFFF;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
+            transition: transform 0.12s, opacity 0.15s;
+        }
+        .submit-btn:active { transform: scale(0.98); }
+        .alert {
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 18px;
+            text-align: center;
+        }
+        .alert-error { background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); color: #FCA5A5; }
+        .alert-wait { background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); color: #FCD34D; }
+        .logout-link { display: inline-block; margin-top: 12px; color: #94A3B8; font-size: 12px; text-decoration: underline; }
+    </style>
 </head>
-<body class="bg-[#121619] text-gray-100 min-h-screen flex items-center justify-center px-4">
-
-    <div class="w-full max-w-sm bg-[#191E22] border border-[#262D33] rounded-2xl p-6 shadow-xl">
-        <div class="flex items-center gap-3 mb-5">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-zinc-900 flex items-center justify-center font-black text-sm">
-                BM
+<body>
+    <div class="login-card">
+        <div class="brand-box">
+            <div class="logo-badge">
+                {% if logo_url %}<img src="{{ logo_url }}" alt="logo">{% else %}{{ project_short }}{% endif %}
             </div>
-            <div>
-                <h1 class="font-bold text-lg leading-tight">BLACK MOBILE</h1>
-                <p class="text-xs text-gray-400">Панель логов и управления</p>
-            </div>
+            <div class="project-title">{{ project_name }}</div>
+            <div class="project-sub">Административная панель и логи</div>
         </div>
 
         {% if admin and admin.status == 'pending' %}
-            <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-center">
-                <div class="text-amber-400 font-semibold text-sm mb-1">Заявка отправлена</div>
-                <p class="text-xs text-gray-300 leading-relaxed">
-                    Аккаунт <span class="font-bold text-white">{{ admin.nickname }}</span> ожидает подтверждения от главного администратора. Страница обновится автоматически.
-                </p>
-                <a href="/logout" class="inline-block mt-4 text-xs text-gray-400 underline">Отменить и выйти</a>
+            <div class="alert alert-wait">
+                <div style="font-weight:700; font-size:15px; margin-bottom:6px;">Заявка на проверке</div>
+                Аккаунт <strong>{{ admin.nickname }}</strong> ожидает одобрения главного администратора. Страница обновится сама.
+                <br><a href="/logout" class="logout-link">Отменить и выйти</a>
             </div>
-
         {% elif admin and admin.status == 'rejected' %}
-            <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-center">
-                <div class="text-red-400 font-semibold text-sm mb-1">В доступе отказано</div>
-                <p class="text-xs text-gray-300">Главный администратор отклонил ваш запрос.</p>
-                <a href="/logout" class="inline-block mt-4 text-xs text-gray-400 underline">Выйти</a>
+            <div class="alert alert-error">
+                <div style="font-weight:700; font-size:15px; margin-bottom:6px;">Доступ закрыт</div>
+                Главный администратор отклонил ваш запрос.
+                <br><a href="/logout" class="logout-link">Выйти</a>
             </div>
-
         {% else %}
             {% if error %}
-            <div class="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
-                {{ error }}
-            </div>
+            <div class="alert alert-error">{{ error }}</div>
             {% endif %}
 
-            <form method="post" action="/login" class="space-y-4">
-                <div>
-                    <label class="block text-xs text-gray-400 mb-1.5">Ваш игровой Nick_Name</label>
-                    <input type="text" name="nickname" required placeholder="Например: Artem_Popikov"
-                           class="w-full px-3.5 py-2.5 rounded-xl bg-[#121619] border border-[#262D33] text-sm focus:outline-none focus:border-white">
+            <form method="post" action="/login">
+                <div class="form-group">
+                    <label class="form-label">Игровой Nick_Name</label>
+                    <input type="text" name="nickname" required autocomplete="off" placeholder="Введите ваш никнейм" class="form-input">
                 </div>
-                <div>
-                    <label class="block text-xs text-gray-400 mb-1.5">Секретный пароль доступа</label>
-                    <input type="password" name="password" required placeholder="••••••••"
-                           class="w-full px-3.5 py-2.5 rounded-xl bg-[#121619] border border-[#262D33] text-sm focus:outline-none focus:border-white">
+                <div class="form-group">
+                    <label class="form-label">Секретный пароль доступа</label>
+                    <input type="password" name="password" required placeholder="Введите пароль панели" class="form-input">
                 </div>
-                <button type="submit" class="w-full py-2.5 rounded-xl bg-white text-gray-900 font-semibold text-sm hover:bg-gray-200 transition">
-                    Запросить вход
-                </button>
+                <button type="submit" class="submit-btn">Войти в панель</button>
             </form>
         {% endif %}
     </div>
-
 </body>
 </html>
