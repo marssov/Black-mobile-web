@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLACK MOBILE · Панель логов</title>
+    <script src="https://tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#121619',
+                        darkcard: '#191E22',
+                        darkborder: '#262D33',
+                    }
+                }
+            }
+        }
+        if (localStorage.getItem('theme') === 'light') {
+            document.documentElement.classList.remove('dark');
+        }
+        function setTheme(mode) {
+            if (mode === 'dark') {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            }
+        }
+    </script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-[#F3F5F7] text-gray-900 dark:bg-darkbg dark:text-gray-100 min-h-screen flex flex-col font-sans antialiased">
+
+    <header class="bg-white dark:bg-darkcard border-b border-gray-200 dark:border-darkborder sticky top-0 z-30">
+        <div class="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-red-600 to-zinc-900 flex items-center justify-center text-white font-black text-xs shadow">
+                    BM
+                </div>
+                <span class="font-extrabold tracking-wide text-sm sm:text-base">BLACK MOBILE</span>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <div class="flex items-center bg-gray-100 dark:bg-darkbg p-0.5 rounded-lg border border-gray-200 dark:border-darkborder text-xs">
+                    <button onclick="setTheme('light')" class="px-2.5 py-1 rounded-md bg-white dark:bg-transparent text-gray-900 dark:text-gray-400 font-medium shadow-sm dark:shadow-none">
+                        Светлая
+                    </button>
+                    <button onclick="setTheme('dark')" class="px-2.5 py-1 rounded-md bg-transparent dark:bg-darkcard text-gray-500 dark:text-white font-medium dark:shadow-sm">
+                        Тёмная
+                    </button>
+                </div>
+
+                <a href="/logout" class="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-darkborder text-xs font-medium hover:bg-gray-100 dark:hover:bg-darkbg">
+                    Выйти
+                </a>
+            </div>
+        </div>
+
+        <nav class="max-w-3xl mx-auto px-4 flex items-center gap-5 overflow-x-auto no-scrollbar text-sm font-medium border-t border-gray-100 dark:border-darkborder/60">
+            <a href="#" class="py-3 whitespace-nowrap text-gray-400 cursor-not-allowed">Обзор</a>
+            <a href="#" class="py-3 whitespace-nowrap text-gray-400 cursor-not-allowed">Проверки</a>
+            <a href="#" class="py-3 whitespace-nowrap text-gray-400 cursor-not-allowed">Журналы</a>
+            <a href="/players" class="py-3 whitespace-nowrap border-b-2 {{ 'border-gray-900 dark:border-white text-gray-900 dark:text-white font-semibold' if active_tab == 'players' else 'border-transparent text-gray-500 dark:text-gray-400' }}">
+                Игроки
+            </a>
+            <a href="#" class="py-3 whitespace-nowrap text-gray-400 cursor-not-allowed">Экономика</a>
+            <a href="#" class="py-3 whitespace-nowrap text-gray-400 cursor-not-allowed">ИИ-следователь</a>
+            <a href="/team" class="py-3 whitespace-nowrap flex items-center gap-1.5 border-b-2 {{ 'border-gray-900 dark:border-white text-gray-900 dark:text-white font-semibold' if active_tab == 'team' else 'border-transparent text-gray-500 dark:text-gray-400' }}">
+                Команда
+                {% if pending_count > 0 %}
+                <span class="px-1.5 py-0.5 text-[11px] rounded-full bg-red-500/20 text-red-500 font-bold">{{ pending_count }}</span>
+                {% endif %}
+            </a>
+        </nav>
+    </header>
+
+    <main class="max-w-3xl w-full mx-auto px-4 py-5 flex-1">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="max-w-3xl w-full mx-auto px-4 py-6 text-xs text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-darkborder/50">
+        <div>BLACK MOBILE · Администратор: <span class="text-gray-600 dark:text-gray-300 font-medium">{{ admin.nickname }}</span> ({{ admin.role }})</div>
+        <div class="mt-1">gs356095 · MySQL · Время сервера UTC+3</div>
+    </footer>
+
+</body>
+</html>     
