@@ -326,7 +326,12 @@ async def team_decide(
         await sdb.commit()
 
     return RedirectResponse("/team", status_code=303)
-get_mysql_pool = get_mysql
+class _MysqlPoolWrapper:
+    def acquire(self):
+        return get_mysql()
+
+async def get_mysql_pool():
+    return _MysqlPoolWrapper()
 async def get_pending_count() -> int:
     async with aiosqlite.connect(SQLITE_DB) as sdb:
         cur = await sdb.execute("SELECT COUNT(*) FROM web_admins WHERE status = 'pending'")
