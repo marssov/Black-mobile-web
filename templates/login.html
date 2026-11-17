@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход · BLACK MOBILE</title>
+    <script src="https://tailwindcss.com"></script>
+    {% if admin and admin.status == 'pending' %}
+    <meta http-equiv="refresh" content="5">
+    {% endif %}
+</head>
+<body class="bg-[#121619] text-gray-100 min-h-screen flex items-center justify-center px-4">
+
+    <div class="w-full max-w-sm bg-[#191E22] border border-[#262D33] rounded-2xl p-6 shadow-xl">
+        <div class="flex items-center gap-3 mb-5">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-zinc-900 flex items-center justify-center font-black text-sm">
+                BM
+            </div>
+            <div>
+                <h1 class="font-bold text-lg leading-tight">BLACK MOBILE</h1>
+                <p class="text-xs text-gray-400">Панель логов и управления</p>
+            </div>
+        </div>
+
+        {% if admin and admin.status == 'pending' %}
+            <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-center">
+                <div class="text-amber-400 font-semibold text-sm mb-1">Заявка отправлена</div>
+                <p class="text-xs text-gray-300 leading-relaxed">
+                    Аккаунт <span class="font-bold text-white">{{ admin.nickname }}</span> ожидает подтверждения от главного администратора. Страница обновится автоматически.
+                </p>
+                <a href="/logout" class="inline-block mt-4 text-xs text-gray-400 underline">Отменить и выйти</a>
+            </div>
+
+        {% elif admin and admin.status == 'rejected' %}
+            <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-center">
+                <div class="text-red-400 font-semibold text-sm mb-1">В доступе отказано</div>
+                <p class="text-xs text-gray-300">Главный администратор отклонил ваш запрос.</p>
+                <a href="/logout" class="inline-block mt-4 text-xs text-gray-400 underline">Выйти</a>
+            </div>
+
+        {% else %}
+            {% if error %}
+            <div class="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <form method="post" action="/login" class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1.5">Ваш игровой Nick_Name</label>
+                    <input type="text" name="nickname" required placeholder="Например: Artem_Popikov"
+                           class="w-full px-3.5 py-2.5 rounded-xl bg-[#121619] border border-[#262D33] text-sm focus:outline-none focus:border-white">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1.5">Секретный пароль доступа</label>
+                    <input type="password" name="password" required placeholder="••••••••"
+                           class="w-full px-3.5 py-2.5 rounded-xl bg-[#121619] border border-[#262D33] text-sm focus:outline-none focus:border-white">
+                </div>
+                <button type="submit" class="w-full py-2.5 rounded-xl bg-white text-gray-900 font-semibold text-sm hover:bg-gray-200 transition">
+                    Запросить вход
+                </button>
+            </form>
+        {% endif %}
+    </div>
+
+</body>
+</html>
