@@ -86,8 +86,7 @@ async def login_page(request: Request):
     admin = await get_current_admin(request)
     if admin and admin["status"] == "approved":
         return RedirectResponse("/players", status_code=303)
-    return templates.TemplateResponse("login.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "login.html", {
         "admin": admin,
         "error": None
     })
@@ -101,8 +100,7 @@ async def login_submit(
 ):
     nickname = nickname.strip()
     if password != ACCESS_PASSWORD:
-        return templates.TemplateResponse("login.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "login.html", {
             "admin": None,
             "error": "Неверный секретный пароль доступа"
         })
@@ -215,10 +213,9 @@ async def players_page(request: Request, q: str = "", db=Depends(get_mysql)):
     async with aiosqlite.connect(SQLITE_DB) as sdb:
         cur = await sdb.execute("SELECT COUNT(*) FROM web_admins WHERE status = 'pending'")
         row_cnt = await cur.fetchone()
-        pending_count = row_cnt if row_cnt else 0
+        pending_count = row_cnt[0] if row_cnt else 0
 
-    return templates.TemplateResponse("players.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "players.html", {
         "admin": admin,
         "active_tab": "players",
         "pending_count": pending_count,
@@ -296,8 +293,7 @@ async def team_page(request: Request):
         cur = await sdb.execute("SELECT * FROM web_admins WHERE status != 'pending' ORDER BY id ASC")
         members = [dict(r) for r in await cur.fetchall()]
 
-    return templates.TemplateResponse("team.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "team.html", {
         "admin": admin,
         "active_tab": "team",
         "pending_count": len(pending),
