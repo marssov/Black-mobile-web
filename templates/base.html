@@ -210,18 +210,18 @@
                 <a href="/logout" class="btn-logout">Выйти</a>
             </div>
         </div>
-        <nav class="container nav-tabs">
+                <nav class="container nav-tabs">
+            <a href="/overview" class="tab-link {{ 'active' if active_tab == 'overview' else '' }}">Обзор</a>
+            <a href="/checks" class="tab-link {{ 'active' if active_tab == 'checks' else '' }}">Проверки</a>
+            <a href="/logs" class="tab-link {{ 'active' if active_tab == 'logs' else '' }}">Журналы</a>
             <a href="/players" class="tab-link {{ 'active' if active_tab == 'players' else '' }}">Игроки</a>
+            <a href="/economy" class="tab-link {{ 'active' if active_tab == 'economy' else '' }}">Экономика</a>
+            <a href="/ai" class="tab-link {{ 'active' if active_tab == 'ai' else '' }}">ИИ-следователь</a>
             <a href="/team" class="tab-link {{ 'active' if active_tab == 'team' else '' }}">
                 Команда
                 {% if pending_count > 0 %}<span class="tab-badge">{{ pending_count }}</span>{% endif %}
             </a>
-            <a href="#" class="tab-link" style="opacity:0.45">Обзор</a>
-            <a href="#" class="tab-link" style="opacity:0.45">Проверки</a>
-            <a href="#" class="tab-link" style="opacity:0.45">Журналы</a>
-            <a href="#" class="tab-link" style="opacity:0.45">Экономика</a>
-            <a href="#" class="tab-link" style="opacity:0.45">ИИ-следователь</a>
-        </nav>
+                </nav>
     </header>
 
     <main class="container">
