@@ -1,172 +1,142 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h1 class="text-2xl font-bold mb-1">Игроки</h1>
-<p class="text-xs text-gray-500 dark:text-gray-400 mb-4">поиск по нику, прежнему нику, UID или IP-адресу</p>
+<div class="page-title">Игроки</div>
+<div class="page-sub">Поиск по нику, прежнему нику, UID или IP-адресу</div>
 
-<form method="get" action="/players" class="flex gap-2 mb-5">
-    <input type="text" name="q" value="{{ q }}" placeholder="Ник, старый ник, UID или IP"
-           class="flex-1 px-4 py-2.5 rounded-xl bg-white dark:bg-darkcard border border-gray-300 dark:border-darkborder text-sm focus:outline-none focus:border-gray-900 dark:focus:border-white">
-    <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#191E22] dark:bg-white text-white dark:text-gray-900 font-semibold text-sm">
-        Найти
-    </button>
+<form method="get" action="/players" style="display:flex; gap:8px; margin-bottom:18px;">
+    <input type="text" name="q" value="{{ q }}" placeholder="Ник, старый ник, UID или IP" class="input-field" style="flex:1;">
+    <button type="submit" class="btn btn-primary">Найти</button>
 </form>
 
 {% if not q %}
-    <div class="bg-white dark:bg-darkcard border border-gray-200 dark:border-darkborder rounded-2xl p-10 text-center">
-        <div class="text-gray-400 text-sm">Введите ник, UID или IP — поиск идёт по всем аккаунтам и прежним никам</div>
+    <div class="card" style="text-align:center; padding:36px 20px;">
+        <div class="bm-muted" style="font-size:14px;">Введите ник, UID или IP-адрес выше, чтобы открыть досье игрока</div>
     </div>
 
 {% elif not player %}
-    <div class="bg-white dark:bg-darkcard border border-gray-200 dark:border-darkborder rounded-2xl p-8 text-center">
-        <div class="text-red-400 font-medium text-sm">Игрок по запросу «{{ q }}» не найден</div>
+    <div class="card" style="text-align:center; padding:32px 20px;">
+        <div style="color:#F87171; font-weight:700; font-size:14px;">Игрок по запросу «{{ q }}» не найден</div>
     </div>
 
 {% else %}
-    <div class="bg-white dark:bg-darkcard border border-gray-200 dark:border-darkborder rounded-2xl overflow-hidden mb-5">
-        <div class="p-4 border-b border-gray-100 dark:border-darkborder flex items-center gap-3.5">
-            <div class="w-12 h-12 rounded-xl bg-gray-100 dark:bg-darkbg flex items-center justify-center font-bold text-gray-500 text-sm">
-                {{ player.name[:2].upper() }}
+    <!-- Карточка профиля -->
+    <div class="card" style="display:flex; align-items:center; gap:14px;">
+        <div style="width:52px; height:52px; border-radius:14px; background:var(--bg-input); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; color:var(--text-muted); flex-shrink:0;">
+            {{ player.name[:2].upper() }}
+        </div>
+        <div style="flex:1; min-width:0;">
+            <div style="font-size:18px; font-weight:800; overflow:hidden; text-overflow:ellipsis;">{{ player.name }}</div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+                UID #{{ player.id }}
+                {% if server_online %} · <span style="color:#34D399; font-weight:600;">Сервер онлайн</span>{% endif %}
             </div>
-            <div>
-                <div class="font-bold text-lg leading-tight">{{ player.name }}</div>
-                <div class="text-xs text-gray-400 mt-0.5 flex items-center gap-2">
-                    <span>UID {{ player.id }}</span>
-                    {% if server_online %}
-                    <span class="text-emerald-500">· сервер онлайн</span>
-                    {% endif %}
-                </div>
-                {% if player.admin > 0 %}
-                <span class="inline-block mt-1.5 px-2.5 py-0.5 rounded-md bg-blue-500/15 text-blue-400 text-xs font-semibold">
-                    админ {{ player.admin }}
-                </span>
-                {% endif %}
+            <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">
+                {% if player.admin > 0 %}<span class="badge badge-blue">Админ {{ player.admin }} ур.</span>{% endif %}
+                {% if bans_count > 0 %}<span class="badge badge-red">Банов: {{ bans_count }}</span>{% endif %}
             </div>
         </div>
-
-        <div class="p-4 border-b border-gray-100 dark:border-darkborder">
-            <div class="text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-3">Деньги и донат</div>
-            <div class="space-y-2.5 text-sm">
-                <div class="flex justify-between">
-                    <span class="text-gray-500 dark:text-gray-400">Наличные</span>
-                    <span class="font-semibold">{{ player.money | fmt_num }} ₽</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-500 dark:text-gray-400">В банке</span>
-                    <span class="font-semibold">{{ player.bank | fmt_num }} ₽</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-500 dark:text-gray-400">Донат-баланс</span>
-                    <span class="font-semibold">{{ player.rub | fmt_num }} DP</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-500 dark:text-gray-400">Реально пополнил</span>
-                    <span class="font-semibold">{{ (real_donated | fmt_num ~ ' ₽') if real_donated > 0 else 'ни разу' }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-500 dark:text-gray-400">Блокировок</span>
-                    <span class="font-semibold {{ 'text-red-500' if bans_count > 0 else '' }}">{{ bans_count }}</span>
-                </div>
-            </div>
-        </div>
-
-            <div class="p-4 border-b border-gray-100 dark:border-darkborder">
-            <div class="text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-3">Аккаунт</div>
-            <div class="space-y-2.5 text-sm">
-                <div class="flex justify-between">
-                    <span class="text-gray-500 dark:text-gray-400">Уровень</span>
-                    <span class="font-semibold">{{ player.level }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-500 dark:text-gray-400">Регистрация</span>
-                    <span class="font-semibold">{{ player.reg_time | fmt_date }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-500 dark:text-gray-400">Последний вход</span>
-                    <span class="font-semibold">{{ player.last_login | fmt_date }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-500 dark:text-gray-400">IP регистрации</span>
-                    <a href="/players?q={{ player.reg_ip }}" class="font-mono text-xs underline">{{ player.reg_ip or '—' }}</a>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-500 dark:text-gray-400">Последний IP</span>
-                    <a href="/players?q={{ player.last_ip }}" class="font-mono text-xs underline">{{ player.last_ip or '—' }}</a>
-                </div>
-            </div>
-        </div>
-
-        {% if twinks %}
-        <div class="p-4 border-b border-gray-100 dark:border-darkborder">
-            <div class="text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-3">Связанные аккаунты (по IP)</div>
-            <div class="space-y-2">
-                {% for t in twinks %}
-                <a href="/players?q={{ t.id }}" class="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 dark:bg-darkbg hover:opacity-80">
-                    <div>
-                        <div class="text-sm font-semibold">{{ t.name }} <span class="text-xs text-gray-400">#{{ t.id }}</span></div>
-                        <div class="text-xs text-gray-400">Ур. {{ t.level }} · {{ t.money | fmt_num }} ₽</div>
-                    </div>
-                    <span class="px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 text-[11px] font-semibold">совпадение IP</span>
-                </a>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-
-        {% if old_names %}
-        <div class="p-4">
-            <div class="text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-2">Прежние ники</div>
-            <div class="flex flex-wrap gap-1.5">
-                {% for n in old_names %}
-                <span class="px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-darkbg text-xs">{{ n.name }}</span>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
     </div>
 
-    {% if admin.role in ['admin', 'owner'] %}
-    <div class="bg-white dark:bg-darkcard border border-gray-200 dark:border-darkborder rounded-2xl p-4 mb-5">
-        <div class="text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-3">Управление игроком</div>
-        <form method="post" action="/players/action" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input type="hidden" name="player_id" value="{{ player.id }}">
-            <select name="action_type" class="px-3 py-2 rounded-xl bg-gray-50 dark:bg-darkbg border border-gray-200 dark:border-darkborder text-sm">
-                <option value="money">Выдать наличные (вирты)</option>
-                <option value="rub">Выдать донат (DP)</option>
-                <option value="admin">Установить уровень админки</option>
-                <option value="ban">Забанить (значение = дни)</option>
-            </select>
-            <input type="number" name="value" required placeholder="Сумма / Уровень / Дни"
-                   class="px-3 py-2 rounded-xl bg-gray-50 dark:bg-darkbg border border-gray-200 dark:border-darkborder text-sm">
-            <input type="text" name="reason" placeholder="Причина для логов" value="Выдано через веб-панель"
-                   class="px-3 py-2 rounded-xl bg-gray-50 dark:bg-darkbg border border-gray-200 dark:border-darkborder text-sm">
-            <button type="submit" class="py-2 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-sm">
-                Выполнить
-            </button>
-        </form>
+    <!-- Карточка денег и доната -->
+    <div class="card">
+        <div class="card-label">Деньги и донат</div>
+        <div class="stat-grid">
+            <div class="stat-box">
+                <div class="stat-box-title">Наличные</div>
+                <div class="stat-box-val" style="color:#34D399;">{{ player.money | fmt_num }} ₽</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-box-title">В банке</div>
+                <div class="stat-box-val">{{ player.bank | fmt_num }} ₽</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-box-title">Донат-счёт</div>
+                <div class="stat-box-val" style="color:#60A5FA;">{{ player.rub | fmt_num }} DP</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-box-title">Реально задонатил</div>
+                <div class="stat-box-val">{{ (real_donated | fmt_num ~ ' ₽') if real_donated > 0 else '0 ₽' }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Карточка данных аккаунта -->
+    <div class="card">
+        <div class="card-label">Информация об аккаунте</div>
+        <div class="data-row"><span class="data-key">Игровой уровень</span><span class="data-val">{{ player.level }} LVL</span></div>
+        <div class="data-row"><span class="data-key">Дата регистрации</span><span class="data-val">{{ player.reg_time | fmt_date }}</span></div>
+        <div class="data-row"><span class="data-key">Последний вход</span><span class="data-val">{{ player.last_login | fmt_date }}</span></div>
+        <div class="data-row"><span class="data-key">IP регистрации</span><a href="/players?q={{ player.reg_ip }}" class="data-val" style="text-decoration:underline;">{{ player.reg_ip or '—' }}</a></div>
+        <div class="data-row"><span class="data-key">Последний IP</span><a href="/players?q={{ player.last_ip }}" class="data-val" style="text-decoration:underline;">{{ player.last_ip or '—' }}</a></div>
+    </div>
+
+    <!-- Твинки по IP -->
+    {% if twinks %}
+    <div class="card">
+        <div class="card-label">Связанные аккаунты (совпадение IP)</div>
+        {% for t in twinks %}
+        <a href="/players?q={{ t.id }}" class="data-row" style="text-decoration:none;">
+            <div>
+                <div style="font-weight:700;">{{ t.name }} <span style="color:var(--text-muted); font-weight:500;">#{{ t.id }}</span></div>
+                <div style="font-size:12px; color:var(--text-muted);">{{ t.level }} LVL · {{ t.money | fmt_num }} ₽</div>
+            </div>
+            <span class="badge badge-red">Твинк IP</span>
+        </a>
+        {% endfor %}
     </div>
     {% endif %}
 
-    {% if recent_money %}
-    <div class="bg-white dark:bg-darkcard border border-gray-200 dark:border-darkborder rounded-2xl p-4">
-        <div class="text-[11px] font-bold tracking-wider text-gray-400 uppercase mb-3">Последние операции (money_audit_log)</div>
-        <div class="space-y-3">
-            {% for m in recent_money %}
-            <div class="p-3 rounded-xl bg-gray-50 dark:bg-darkbg text-xs">
-                <div class="flex justify-between text-gray-400 mb-1">
-                    <span>{{ m.time | fmt_date }}</span>
-                    <span>IP {{ m.uip }}</span>
-                </div>
-                <div class="font-semibold text-sm">{{ m.description or 'Операция' }}</div>
-                <div class="mt-1 text-gray-400">
-                    {{ m.player_name }} (#{{ m.uid }}) → {{ m.counterparty_name or '—' }}
-                    <span class="font-bold text-emerald-500 ml-1">{{ m.amount | fmt_num }} ₽</span>
-                </div>
-            </div>
+    <!-- История ников -->
+    {% if old_names %}
+    <div class="card">
+        <div class="card-label">История смены ников</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+            {% for n in old_names %}
+            <span class="badge" style="background:var(--bg-input); border:1px solid var(--border); padding:5px 10px;">{{ n.name }}</span>
             {% endfor %}
         </div>
     </div>
     {% endif %}
 
+    <!-- Управление игроком -->
+    {% if admin.role in ['admin', 'owner'] %}
+    <div class="card">
+        <div class="card-label">Управление игроком</div>
+        <form method="post" action="/players/action" style="display:grid; gap:10px;">
+            <input type="hidden" name="player_id" value="{{ player.id }}">
+            <select name="action_type" class="select-field">
+                <option value="money">Выдать наличные (вирты)</option>
+                <option value="rub">Выдать донат (DP)</option>
+                <option value="admin">Установить уровень админки</option>
+                <option value="ban">Забанить (значение = дни)</option>
+            </select>
+            <input type="number" name="value" required placeholder="Сумма / Уровень / Дни" class="input-field">
+            <input type="text" name="reason" value="Выдано через веб-панель" placeholder="Причина для логов" class="input-field">
+            <button type="submit" class="btn btn-danger" style="width:100%;">Выполнить действие</button>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- Денежные операции -->
+    {% if recent_money %}
+    <div class="card">
+        <div class="card-label">Последние операции (money_audit_log)</div>
+        {% for m in recent_money %}
+        <div style="padding:10px 0; border-bottom:1px solid var(--border);">
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:4px;">
+                <span>{{ m.time | fmt_date }}</span>
+                <span>IP {{ m.uip }}</span>
+            </div>
+            <div style="font-size:13px; font-weight:700;">{{ m.description or 'Перевод / Операция' }}</div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+                {{ m.player_name }} → {{ m.counterparty_name or '—' }}
+                <span style="color:#34D399; font-weight:700; margin-left:4px;">{{ m.amount | fmt_num }} ₽</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 {% endif %}
+
 {% endblock %}
