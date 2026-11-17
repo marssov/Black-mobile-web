@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-title">Обзор сервера</div>
+<div class="page-sub">Общая сводка активности и ключевые показатели</div>
+
+<div class="card">
+    <div class="card-label">Статистика проекта</div>
+    <div class="stat-grid">
+        <div class="stat-box">
+            <div class="stat-box-title">Всего аккаунтов</div>
+            <div class="stat-box-val">{{ stats.total_users | fmt_num }}</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-box-title">Новых за 24 часа</div>
+            <div class="stat-box-val" style="color:#34D399;">+{{ stats.new_24h | fmt_num }}</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-box-title">Активных за 24 часа</div>
+            <div class="stat-box-val" style="color:#60A5FA;">{{ stats.active_24h | fmt_num }}</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-box-title">Администраторов</div>
+            <div class="stat-box-val">{{ stats.admins_count | fmt_num }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-label">Последние авторизации</div>
+    {% for u in recent_logins %}
+    <a href="/players?q={{ u.id }}" class="data-row">
+        <div style="text-align:left;">
+            <div style="font-weight:700;">{{ u.name }} <span style="color:var(--text-muted); font-weight:500;">#{{ u.id }}</span></div>
+            <div style="font-size:12px; color:var(--text-muted);">{{ u.level }} LVL · IP {{ u.last_ip or '—' }}</div>
+        </div>
+        <div class="data-val" style="font-size:12px; color:var(--text-muted);">{{ u.last_login | fmt_date }}</div>
+    </a>
+    {% endfor %}
+</div>
+
+{% endblock %}
