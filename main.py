@@ -362,16 +362,16 @@ async def overview_page(request: Request):
     pool = await get_mysql_pool()
     async with pool.acquire() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cur:
-            await cur.execute("SELECT COUNT(*) AS c FROM users")
+            await cur.execute("SELECT COUNT(*) AS c FROM accounts")
             stats["total_users"] = (await cur.fetchone())["c"]
-            await cur.execute("SELECT COUNT(*) AS c FROM users WHERE reg_time >= %s", (day_ago,))
+            await cur.execute("SELECT COUNT(*) AS c FROM accounts WHERE reg_time >= %s", (day_ago,))
             stats["new_24h"] = (await cur.fetchone())["c"]
-            await cur.execute("SELECT COUNT(*) AS c FROM users WHERE last_login >= %s", (day_ago,))
+            await cur.execute("SELECT COUNT(*) AS c FROM accounts WHERE last_login >= %s", (day_ago,))
             stats["active_24h"] = (await cur.fetchone())["c"]
-            await cur.execute("SELECT COUNT(*) AS c FROM users WHERE admin > 0")
+            await cur.execute("SELECT COUNT(*) AS c FROM accounts WHERE admin > 0")
             stats["admins_count"] = (await cur.fetchone())["c"]
             await cur.execute(
-                "SELECT id, name, level, last_ip, last_login FROM users ORDER BY last_login DESC LIMIT 15"
+                "SELECT id, name, level, last_ip, last_login FROM accounts ORDER BY last_login DESC LIMIT 15"
             )
             recent_logins = await cur.fetchall()
 
@@ -401,7 +401,7 @@ async def checks_page(request: Request):
             big_transfers = await cur.fetchall()
             await cur.execute(
                 "SELECT reg_ip, COUNT(*) AS cnt, GROUP_CONCAT(name SEPARATOR ', ') AS names "
-                "FROM users WHERE reg_ip != '' GROUP BY reg_ip HAVING cnt >= 3 ORDER BY cnt DESC LIMIT 15"
+                "FROM accounts WHERE reg_ip != '' GROUP BY reg_ip HAVING cnt >= 3 ORDER BY cnt DESC LIMIT 15"
             )
             multi_ips = await cur.fetchall()
 
@@ -441,6 +441,7 @@ async def logs_page(request: Request, cat: str = "money"):
         "items": items
     })
 
+
 @app.get("/economy", response_class=HTMLResponse)
 async def economy_page(request: Request):
     admin = await get_current_admin(request)
@@ -453,12 +454,12 @@ async def economy_page(request: Request):
     async with pool.acquire() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute(
-                "SELECT COALESCE(SUM(money),0) AS cash, COALESCE(SUM(bank),0) AS bank, COALESCE(SUM(rub),0) AS dp FROM users"
+                "SELECT COALESCE(SUM(money),0) AS cash, COALESCE(SUM(bank),0) AS bank, COALESCE(SUM(rub),0) AS dp FROM accounts"
             )
             r = await cur.fetchone()
             eco = {"total_cash": int(r["cash"]), "total_bank": int(r["bank"]), "total_dp": int(r["dp"])}
             await cur.execute(
-                "SELECT id, name, level, (money + bank) AS total_wealth FROM users ORDER BY total_wealth DESC LIMIT 15"
+                "SELECT id, name, level, (money + bank) AS total_wealth FROM accounts ORDER BY total_wealth DESC LIMIT 15"
             )
             top_rich = await cur.fetchall()
 
@@ -485,7 +486,7 @@ async def ai_page(request: Request, q: str = "", preset: str = ""):
         async with conn.cursor(aiomysql.DictCursor) as cur:
             if preset == "rich_newbies":
                 await cur.execute(
-                    "SELECT id, name, level, (money + bank) AS wealth FROM users WHERE level <= 3 AND (money + bank) >= 1000000 ORDER BY wealth DESC LIMIT 15"
+                    "SELECT id, name, level, (money + bank) AS wealth FROM accounts WHERE level <= 3 AND (money + bank) >= 1000000 ORDER BY wealth DESC LIMIT 15"
                 )
                 rows_db = await cur.fetchall()
                 report = {
@@ -506,7 +507,7 @@ async def ai_page(request: Request, q: str = "", preset: str = ""):
                 }
             elif preset == "twinks":
                 await cur.execute(
-                    "SELECT reg_ip, COUNT(*) AS cnt, GROUP_CONCAT(name SEPARATOR ', ') AS names FROM users WHERE reg_ip != '' GROUP BY reg_ip HAVING cnt >= 3 ORDER BY cnt DESC LIMIT 15"
+                    "SELECT reg_ip, COUNT(*) AS cnt, GROUP_CONCAT(name SEPARATOR ', ') AS names FROM accounts WHERE reg_ip != '' GROUP BY reg_ip HAVING cnt >= 3 ORDER BY cnt DESC LIMIT 15"
                 )
                 rows_db = await cur.fetchall()
                 report = {
@@ -516,14 +517,14 @@ async def ai_page(request: Request, q: str = "", preset: str = ""):
                 }
             elif q_clean:
                 if q_clean.isdigit():
-                    await cur.execute("SELECT * FROM users WHERE id = %s LIMIT 1", (int(q_clean),))
+                    await cur.execute("SELECT * FROM accounts WHERE id = %s LIMIT 1", (int(q_clean),))
                 else:
-                    await cur.execute("SELECT * FROM users WHERE name = %s LIMIT 1", (q_clean,))
+                    await cur.execute("SELECT * FROM accounts WHERE name = %s LIMIT 1", (q_clean,))
                 u = await cur.fetchone()
                 if u:
                     await cur.execute("SELECT COUNT(*) AS c FROM ban_list WHERE user_id = %s", (u["id"],))
                     bans = (await cur.fetchone())["c"]
-                    await cur.execute("SELECT COUNT(*) AS c FROM users WHERE (reg_ip = %s OR last_ip = %s) AND id != %s", (u["reg_ip"], u["last_ip"], u["id"]))
+                    await cur.execute("SELECT COUNT(*) AS c FROM accounts WHERE (reg_ip = %s OR last_ip = %s) AND id != %s", (u["reg_ip"], u["last_ip"], u["id"]))
                     twinks_cnt = (await cur.fetchone())["c"]
                     risk = "ВЫСОКИЙ" if (bans > 0 or twinks_cnt >= 2) else "НИЗКИЙ"
                     report = {
