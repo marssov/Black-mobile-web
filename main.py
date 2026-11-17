@@ -326,9 +326,19 @@ async def team_decide(
         await sdb.commit()
 
     return RedirectResponse("/team", status_code=303)
+class _MysqlConnCtx:
+    def __init__(self):
+        self._gen = None
+    async def __aenter__(self):
+        self._gen = get_mysql()
+        return await self._gen.__anext__()
+    async def __aexit__(self, *args):
+        if self._gen:
+            await self._gen.aclose()
+
 class _MysqlPoolWrapper:
     def acquire(self):
-        return get_mysql()
+        return _MysqlConnCtx()
 
 async def get_mysql_pool():
     return _MysqlPoolWrapper()
