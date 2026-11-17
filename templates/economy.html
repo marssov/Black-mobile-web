@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-title">Экономика сервера</div>
+<div class="page-sub">Общая денежная масса и рейтинг самых богатых игроков</div>
+
+<div class="card">
+    <div class="card-label">Денежная масса проекта</div>
+    <div class="stat-grid">
+        <div class="stat-box">
+            <div class="stat-box-title">Наличные на руках</div>
+            <div class="stat-box-val" style="color:#34D399;">{{ eco.total_cash | fmt_num }} ₽</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-box-title">Средства в банках</div>
+            <div class="stat-box-val">{{ eco.total_bank | fmt_num }} ₽</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-box-title">Всего виртов (общ.)</div>
+            <div class="stat-box-val" style="color:#FBBF24;">{{ (eco.total_cash + eco.total_bank) | fmt_num }} ₽</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-box-title">Всего доната (DP)</div>
+            <div class="stat-box-val" style="color:#60A5FA;">{{ eco.total_dp | fmt_num }} DP</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-label">Топ-15 богатейших игроков</div>
+    {% for p in top_rich %}
+    <a href="/players?q={{ p.id }}" class="data-row">
+        <div style="text-align:left;">
+            <div style="font-weight:700;">#{{ loop.index }} · {{ p.name }}</div>
+            <div style="font-size:12px; color:var(--text-muted);">{{ p.level }} LVL · UID #{{ p.id }}</div>
+        </div>
+        <div class="data-val" style="color:#34D399;">{{ p.total_wealth | fmt_num }} ₽</div>
+    </a>
+    {% endfor %}
+</div>
+
+{% endblock %}
