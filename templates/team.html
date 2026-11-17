@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1 class="text-2xl font-bold mb-1">Команда</h1>
+<p class="text-xs text-gray-500 dark:text-gray-400 mb-5">управление доступом администраторов к веб-панели</p>
+
+{% if pending %}
+<div class="mb-6">
+    <div class="text-xs font-bold uppercase tracking-wider text-amber-500 mb-2.5">Ожидают одобрения ({{ pending|length }})</div>
+    <div class="space-y-3">
+        {% for p in pending %}
+        <div class="bg-white dark:bg-darkcard border border-amber-500/40 rounded-2xl p-4">
+            <div class="flex justify-between items-start mb-3">
+                <div>
+                    <div class="font-bold text-base">{{ p.nickname }}</div>
+                    <div class="text-xs text-gray-400 mt-0.5">IP: {{ p.ip }} · {{ p.created_at | fmt_date }}</div>
+                </div>
+                <span class="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 text-xs font-semibold">Запрос</span>
+            </div>
+
+            {% if admin.role == 'owner' %}
+            <div class="flex flex-wrap gap-2">
+                <form method="post" action="/team/decide" class="flex gap-2 flex-1">
+                    <input type="hidden" name="target_id" value="{{ p.id }}">
+                    <input type="hidden" name="decision" value="approve">
+                    <select name="role" class="px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-darkbg border border-gray-300 dark:border-darkborder text-xs">
+                        <option value="moder">Мл. админ (только просмотр)</option>
+                        <option value="admin">Ст. админ (выдача и баны)</option>
+                    </select>
+                    <button type="submit" class="px-4 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold">
+                        Одобрить
+                    </button>
+                </form>
+
+                <form method="post" action="/team/decide">
+                    <input type="hidden" name="target_id" value="{{ p.id }}">
+                    <input type="hidden" name="decision" value="reject">
+                    <button type="submit" class="px-4 py-1.5 rounded-lg bg-red-600/20 text-red-400 text-xs font-semibold">
+                        Отказать
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="bg-white dark:bg-darkcard border border-gray-200 dark:border-darkborder rounded-2xl divide-y divide-gray-100 dark:divide-darkborder">
+    {% for m in members %}
+    <div class="p-4 flex items-center justify-between">
+        <div>
+            <div class="font-semibold text-sm flex items-center gap-2">
+                {{ m.nickname }}
+                {% if m.role == 'owner' %}
+                <span class="px-2 py-0.5 rounded bg-purple-500/15 text-purple-400 text-[11px]">Владелец</span>
+                {% elif m.role == 'admin' %}
+                <span class="px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 text-[11px]">Ст. админ</span>
+                {% else %}
+                <span class="px-2 py-0.5 rounded bg-gray-500/15 text-gray-400 text-[11px]">Мл. админ</span>
+                {% endif %}
+            </div>
+            <div class="text-xs text-gray-400 mt-0.5">Статус: {{ 'Активен' if m.status == 'approved' else 'Отклонён' }} · IP {{ m.ip }}</div>
+        </div>
+
+        {% if admin.role == 'owner' and m.role != 'owner' %}
+        <form method="post" action="/team/decide">
+            <input type="hidden" name="target_id" value="{{ m.id }}">
+            <input type="hidden" name="decision" value="delete">
+            <button type="submit" class="px-3 py-1.5 rounded-lg border border-red-500/30 text-red-400 text-xs hover:bg-red-500/10">
+                Удалить
+            </button>
+        </form>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}
