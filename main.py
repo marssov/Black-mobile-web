@@ -326,4 +326,203 @@ async def team_decide(
         await sdb.commit()
 
     return RedirectResponse("/team", status_code=303)
-  
+
+async def get_pending_count() -> int:
+    async with aiosqlite.connect(SQLITE_DB) as sdb:
+        cur = await sdb.execute("SELECT COUNT(*) FROM web_admins WHERE status = 'pending'")
+        row = await cur.fetchone()
+        return row[0] if row else 0
+
+
+@app.get("/overview", response_class=HTMLResponse)
+async def overview_page(request: Request):
+    admin = await get_current_admin(request)
+    if not admin or admin["status"] != "approved":
+        return RedirectResponse("/login", status_code=302)
+
+    day_ago = int(time.time()) - 86400
+    stats = {"total_users": 0, "new_24h": 0, "active_24h": 0, "admins_count": 0}
+    recent_logins = []
+
+    pool = await get_mysql_pool()
+    async with pool.acquire() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            await cur.execute("SELECT COUNT(*) AS c FROM users")
+            stats["total_users"] = (await cur.fetchone())["c"]
+            await cur.execute("SELECT COUNT(*) AS c FROM users WHERE reg_time >= %s", (day_ago,))
+            stats["new_24h"] = (await cur.fetchone())["c"]
+            await cur.execute("SELECT COUNT(*) AS c FROM users WHERE last_login >= %s", (day_ago,))
+            stats["active_24h"] = (await cur.fetchone())["c"]
+            await cur.execute("SELECT COUNT(*) AS c FROM users WHERE admin > 0")
+            stats["admins_count"] = (await cur.fetchone())["c"]
+            await cur.execute(
+                "SELECT id, name, level, last_ip, last_login FROM users ORDER BY last_login DESC LIMIT 15"
+            )
+            recent_logins = await cur.fetchall()
+
+    return templates.TemplateResponse(request, "overview.html", {
+        "admin": admin,
+        "active_tab": "overview",
+        "pending_count": await get_pending_count(),
+        "stats": stats,
+        "recent_logins": recent_logins
+    })
+
+
+@app.get("/checks", response_class=HTMLResponse)
+async def checks_page(request: Request):
+    admin = await get_current_admin(request)
+    if not admin or admin["status"] != "approved":
+        return RedirectResponse("/login", status_code=302)
+
+    big_transfers = []
+    multi_ips = []
+    pool = await get_mysql_pool()
+    async with pool.acquire() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            await cur.execute(
+                "SELECT * FROM money_audit_log WHERE ABS(amount) >= 5000000 ORDER BY time DESC LIMIT 20"
+            )
+            big_transfers = await cur.fetchall()
+            await cur.execute(
+                "SELECT reg_ip, COUNT(*) AS cnt, GROUP_CONCAT(name SEPARATOR ', ') AS names "
+                "FROM users WHERE reg_ip != '' GROUP BY reg_ip HAVING cnt >= 3 ORDER BY cnt DESC LIMIT 15"
+            )
+            multi_ips = await cur.fetchall()
+
+    return templates.TemplateResponse(request, "checks.html", {
+        "admin": admin,
+        "active_tab": "checks",
+        "pending_count": await get_pending_count(),
+        "big_transfers": big_transfers,
+        "multi_ips": multi_ips
+    })
+
+
+@app.get("/logs", response_class=HTMLResponse)
+async def logs_page(request: Request, cat: str = "money"):
+    admin = await get_current_admin(request)
+    if not admin or admin["status"] != "approved":
+        return RedirectResponse("/login", status_code=302)
+
+    items = []
+    pool = await get_mysql_pool()
+    async with pool.acquire() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            if cat == "admin":
+                await cur.execute("SELECT * FROM aclogs ORDER BY id DESC LIMIT 30")
+            elif cat == "bans":
+                await cur.execute("SELECT * FROM ban_list ORDER BY id DESC LIMIT 30")
+            else:
+                cat = "money"
+                await cur.execute("SELECT * FROM money_audit_log ORDER BY time DESC LIMIT 30")
+            items = await cur.fetchall()
+
+    return templates.TemplateResponse(request, "logs.html", {
+        "admin": admin,
+        "active_tab": "logs",
+        "pending_count": await get_pending_count(),
+        "cat": cat,
+        "items": items
+    })
+
+@app.get("/economy", response_class=HTMLResponse)
+async def economy_page(request: Request):
+    admin = await get_current_admin(request)
+    if not admin or admin["status"] != "approved":
+        return RedirectResponse("/login", status_code=302)
+
+    eco = {"total_cash": 0, "total_bank": 0, "total_dp": 0}
+    top_rich = []
+    pool = await get_mysql_pool()
+    async with pool.acquire() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            await cur.execute(
+                "SELECT COALESCE(SUM(money),0) AS cash, COALESCE(SUM(bank),0) AS bank, COALESCE(SUM(rub),0) AS dp FROM users"
+            )
+            r = await cur.fetchone()
+            eco = {"total_cash": int(r["cash"]), "total_bank": int(r["bank"]), "total_dp": int(r["dp"])}
+            await cur.execute(
+                "SELECT id, name, level, (money + bank) AS total_wealth FROM users ORDER BY total_wealth DESC LIMIT 15"
+            )
+            top_rich = await cur.fetchall()
+
+    return templates.TemplateResponse(request, "economy.html", {
+        "admin": admin,
+        "active_tab": "economy",
+        "pending_count": await get_pending_count(),
+        "eco": eco,
+        "top_rich": top_rich
+    })
+
+
+@app.get("/ai", response_class=HTMLResponse)
+async def ai_page(request: Request, q: str = "", preset: str = ""):
+    admin = await get_current_admin(request)
+    if not admin or admin["status"] != "approved":
+        return RedirectResponse("/login", status_code=302)
+
+    report = None
+    q_clean = q.strip()
+    pool = await get_mysql_pool()
+
+    async with pool.acquire() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            if preset == "rich_newbies":
+                await cur.execute(
+                    "SELECT id, name, level, (money + bank) AS wealth FROM users WHERE level <= 3 AND (money + bank) >= 1000000 ORDER BY wealth DESC LIMIT 15"
+                )
+                rows_db = await cur.fetchall()
+                report = {
+                    "title": "Богатые новички (1–3 LVL)",
+                    "summary": f"Найдено {len(rows_db)} игроков низкого уровня с балансом от 1 000 000 ₽. Рекомендуется проверить источники получения средств.",
+                    "rows": [{"title": f"{r['name']} (#{r['id']})", "sub": f"{r['level']} LVL", "tag": f"{int(r['wealth']):,} ₽".replace(",", " ")} for r in rows_db]
+                }
+            elif preset == "big_transfers":
+                day_ago = int(time.time()) - 86400
+                await cur.execute(
+                    "SELECT * FROM money_audit_log WHERE time >= %s ORDER BY ABS(amount) DESC LIMIT 15", (day_ago,)
+                )
+                rows_db = await cur.fetchall()
+                report = {
+                    "title": "Крупнейшие переводы за 24 часа",
+                    "summary": f"Топ-{len(rows_db)} самых крупных денежных операций на сервере за последние сутки.",
+                    "rows": [{"title": f"{r['player_name']} → {r['counterparty_name'] or '—'}", "sub": r['description'] or 'Операция', "tag": f"{int(r['amount']):,} ₽".replace(",", " ")} for r in rows_db]
+                }
+            elif preset == "twinks":
+                await cur.execute(
+                    "SELECT reg_ip, COUNT(*) AS cnt, GROUP_CONCAT(name SEPARATOR ', ') AS names FROM users WHERE reg_ip != '' GROUP BY reg_ip HAVING cnt >= 3 ORDER BY cnt DESC LIMIT 15"
+                )
+                rows_db = await cur.fetchall()
+                report = {
+                    "title": "Сетки мультиаккаунтов по IP",
+                    "summary": f"Обнаружено {len(rows_db)} IP-адресов с 3 и более зарегистрированными аккаунтами.",
+                    "rows": [{"title": f"IP {r['reg_ip']}", "sub": r['names'][:60], "tag": f"{r['cnt']} акк."} for r in rows_db]
+                }
+            elif q_clean:
+                if q_clean.isdigit():
+                    await cur.execute("SELECT * FROM users WHERE id = %s LIMIT 1", (int(q_clean),))
+                else:
+                    await cur.execute("SELECT * FROM users WHERE name = %s LIMIT 1", (q_clean,))
+                u = await cur.fetchone()
+                if u:
+                    await cur.execute("SELECT COUNT(*) AS c FROM ban_list WHERE user_id = %s", (u["id"],))
+                    bans = (await cur.fetchone())["c"]
+                    await cur.execute("SELECT COUNT(*) AS c FROM users WHERE (reg_ip = %s OR last_ip = %s) AND id != %s", (u["reg_ip"], u["last_ip"], u["id"]))
+                    twinks_cnt = (await cur.fetchone())["c"]
+                    risk = "ВЫСОКИЙ" if (bans > 0 or twinks_cnt >= 2) else "НИЗКИЙ"
+                    report = {
+                        "title": f"Досье на {u['name']} (#{u['id']})",
+                        "summary": f"Уровень риска: {risk}.\nУровень аккаунта: {u['level']} LVL · Общий капитал: {int(u['money'] + u['bank']):,} ₽.\nСвязанных твинков по IP: {twinks_cnt} · Блокировок в истории: {bans}.".replace(",", " "),
+                        "rows": []
+                    }
+                else:
+                    report = {"title": "Результат поиска", "summary": f"Игрок «{q_clean}» не найден в базе данных.", "rows": []}
+
+    return templates.TemplateResponse(request, "ai.html", {
+        "admin": admin,
+        "active_tab": "ai",
+        "pending_count": await get_pending_count(),
+        "q": q_clean,
+        "report": report
+    })
