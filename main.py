@@ -14,6 +14,9 @@ app.add_middleware(
     secret_key=os.getenv("SECRET_KEY", "bm_secret_key_change_me_2026")
 )
 templates = Jinja2Templates(directory="templates")
+templates.env.globals["project_name"] = os.getenv("PROJECT_NAME", "BLACK MOBILE")
+templates.env.globals["project_short"] = os.getenv("PROJECT_SHORT", "BM")
+templates.env.globals["logo_url"] = os.getenv("LOGO_URL", "")
 
 ACCESS_PASSWORD = os.getenv("ADMIN_ACCESS_PASSWORD", "BM2026")
 OWNER_NICK = os.getenv("OWNER_NICK", "Artem_Popikov")
