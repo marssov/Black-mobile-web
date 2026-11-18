@@ -15,7 +15,7 @@ app = FastAPI()
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SECRET_KEY", "black-mobile-super-secret-key-2026"),
-        max_age=2592000,
+    max_age=2592000,
 )
 
 templates = Jinja2Templates(directory="templates")
@@ -40,7 +40,7 @@ def fmt_date(ts) -> str:
     try:
         t = int(ts)
         if t <= 0:
-            return "—"
+            return "Навсегда" if t == 0 else "—"
         if t >= 2147483647:
             return "Навсегда"
         return datetime.fromtimestamp(t).strftime("%d.%m.%Y %H:%M")
@@ -319,7 +319,14 @@ async def logs_page(request: Request, cat: str = "money"):
             if cat == "admin":
                 await cur.execute("SELECT * FROM aclogs ORDER BY id DESC LIMIT 30")
             elif cat == "bans":
-                await cur.execute("SELECT * FROM ban_list ORDER BY id DESC LIMIT 30")
+                await cur.execute(
+                    "SELECT b.*, a.name AS player_name FROM ban_list b "
+                    "LEFT JOIN accounts a ON a.id = b.user_id ORDER BY b.id DESC LIMIT 30"
+                )
+            elif cat == "trades":
+                await cur.execute("SELECT * FROM trade_audit_log ORDER BY id DESC LIMIT 30")
+            elif cat == "anticheat":
+                await cur.execute("SELECT * FROM laird_ac_log ORDER BY id DESC LIMIT 30")
             else:
                 cat = "money"
                 await cur.execute("SELECT * FROM money_audit_log ORDER BY time DESC LIMIT 30")
@@ -331,6 +338,23 @@ async def logs_page(request: Request, cat: str = "money"):
         "cat": cat,
         "items": items,
     })
+
+
+@app.post("/logs/unban")
+async def logs_quick_unban(request: Request, user_id: int = Form(...)):
+    admin = await get_current_admin(request)
+    if not admin or admin["role"] not in ["admin", "owner"]:
+        return RedirectResponse("/logs?cat=bans", status_code=302)
+
+    pool = await get_mysql_pool()
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute("DELETE FROM ban_list WHERE user_id = %s", (user_id,))
+            await cur.execute(
+                "INSERT INTO aclogs (name, type, data, reason, date) VALUES (%s, 'web_unban', %s, 'Разбан через журнал банов', %s)",
+                (admin["nickname"], f"UID #{user_id}", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+            )
+    return RedirectResponse("/logs?cat=bans", status_code=302)
 
 
 @app.get("/staff", response_class=HTMLResponse)
@@ -350,7 +374,7 @@ async def staff_page(request: Request):
             game_admins = await cur.fetchall()
             try:
                 await cur.execute(
-                    "SELECT id, name, leader, rank FROM accounts WHERE leader > 0 ORDER BY leader ASC"
+                    "SELECT id, name, team, post, last_login FROM accounts WHERE team > 0 AND post >= 10 ORDER BY team ASC"
                 )
                 leaders = await cur.fetchall()
             except Exception:
@@ -463,6 +487,9 @@ async def players_page(request: Request, q: str = "", msg: str = ""):
     bans_count = 0
     is_banned = False
     recent_money = []
+    cars = []
+    houses = []
+    businesses = []
 
     if q_clean:
         pool = await get_mysql_pool()
@@ -521,6 +548,21 @@ async def players_page(request: Request, q: str = "", msg: str = ""):
                         recent_money = await cur.fetchall()
                     except Exception:
                         recent_money = []
+                    try:
+                        await cur.execute("SELECT * FROM ownable_cars WHERE owner_id = %s", (pid,))
+                        cars = await cur.fetchall()
+                    except Exception:
+                        cars = []
+                    try:
+                        await cur.execute("SELECT * FROM houses WHERE owner_id = %s", (pid,))
+                        houses = await cur.fetchall()
+                    except Exception:
+                        houses = []
+                    try:
+                        await cur.execute("SELECT * FROM business WHERE owner_id = %s", (pid,))
+                        businesses = await cur.fetchall()
+                    except Exception:
+                        businesses = []
 
     return templates.TemplateResponse(request, "players.html", {
         "admin": admin,
@@ -534,6 +576,9 @@ async def players_page(request: Request, q: str = "", msg: str = ""):
         "bans_count": bans_count,
         "is_banned": is_banned,
         "recent_money": recent_money,
+        "cars": cars,
+        "houses": houses,
+        "businesses": businesses,
     })
 
 
@@ -577,6 +622,12 @@ async def player_action(
                 )
             elif action_type == "unban":
                 await cur.execute("DELETE FROM ban_list WHERE user_id = %s", (player_id,))
+            elif action_type == "del_car":
+                await cur.execute("DELETE FROM ownable_cars WHERE id = %s AND owner_id = %s", (value, player_id))
+            elif action_type == "del_house":
+                await cur.execute("UPDATE houses SET owner_id = 0 WHERE id = %s AND owner_id = %s", (value, player_id))
+            elif action_type == "del_biz":
+                await cur.execute("UPDATE business SET owner_id = 0 WHERE id = %s AND owner_id = %s", (value, player_id))
             elif action_type == "wipe":
                 await cur.execute("UPDATE accounts SET money = 0, bank = 0, rub = 0 WHERE id = %s", (player_id,))
                 await cur.execute("DELETE FROM ownable_cars WHERE owner_id = %s", (player_id,))
@@ -660,26 +711,39 @@ async def ai_page(request: Request, q: str = ""):
             "Отвечай строго на русском языке, чётко, структурированно и простым понятным текстом без SQL-кода. "
             "Опирайся только на переданные данные из базы сервера."
         )
+        api_key = os.getenv("GROQ_API_KEY", "").strip()
         try:
             async with httpx.AsyncClient(timeout=25.0) as client:
-                resp = await client.post(
-                    "https://pollinations.ai",
-                    headers={"Content-Type": "application/json"},
-                    json={
-                        "model": "openai",
-                        "messages": [
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": f"Данные сервера:\n{context_text}\n\nВопрос администратора: {q_clean}"},
-                        ],
-                    },
-                )
-                if resp.status_code == 200 and resp.text.strip():
-                    data = resp.json()
-                    answer = data["choices"]["message"]["content"]
-                else:
-                    answer = f"Сервер ИИ временно занят (код {resp.status_code}). Попробуйте повторить запрос через пару секунд."
+                if api_key:
+                    resp = await client.post(
+                        "https://groq.com",
+                        headers={
+                            "Authorization": f"Bearer {api_key}",
+                            "Content-Type": "application/json",
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        },
+                        json={
+                            "model": "llama-3.3-70b-versatile",
+                            "messages": [
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": f"Данные сервера:\n{context_text}\n\nВопрос администратора: {q_clean}"},
+                            ],
+                            "temperature": 0.3,
+                            "max_tokens": 900,
+                        },
+                    )
+                    if resp.status_code == 200:
+                        answer = resp.json()["choices"]["message"]["content"]
+                if not answer:
+                    import urllib.parse
+                    prompt_full = urllib.parse.quote(f"{system_prompt}\n\nДанные сервера:\n{context_text}\n\nВопрос: {q_clean}")
+                    resp2 = await client.get(f"https://pollinations.ai{prompt_full}")
+                    if resp2.status_code == 200 and resp2.text.strip():
+                        answer = resp2.text.strip()
+                    else:
+                        answer = f"Не удалось получить ответ от ИИ (код {resp2.status_code})."
         except Exception as e:
-            answer = f"Не удалось связаться с сервером ИИ: {e}"
+            answer = f"Ошибка связи с ИИ: {e}"
 
     return templates.TemplateResponse(request, "ai.html", {
         "admin": admin,
@@ -687,4 +751,3 @@ async def ai_page(request: Request, q: str = ""):
         "q": q_clean,
         "answer": answer,
     })
-
