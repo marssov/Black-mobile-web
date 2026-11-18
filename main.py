@@ -711,39 +711,28 @@ async def ai_page(request: Request, q: str = ""):
             "Отвечай строго на русском языке, чётко, структурированно и простым понятным текстом без SQL-кода. "
             "Опирайся только на переданные данные из базы сервера."
         )
-        api_key = os.getenv("GROQ_API_KEY", "").strip()
-        try:
-            async with httpx.AsyncClient(timeout=25.0) as client:
-                if api_key:
+        gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+        if not gemini_key:
+            answer = "Ключ GEMINI_API_KEY не добавлен в Render -> Environment."
+        else:
+            try:
+                async with httpx.AsyncClient(timeout=25.0) as client:
                     resp = await client.post(
-                        "https://groq.com",
-                        headers={
-                            "Authorization": f"Bearer {api_key}",
-                            "Content-Type": "application/json",
-                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                        },
+                        f"https://googleapis.com{gemini_key}",
+                        headers={"Content-Type": "application/json"},
                         json={
-                            "model": "llama-3.3-70b-versatile",
-                            "messages": [
-                                {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": f"Данные сервера:\n{context_text}\n\nВопрос администратора: {q_clean}"},
-                            ],
-                            "temperature": 0.3,
-                            "max_tokens": 900,
+                            "contents": [{
+                                "parts": [{"text": f"{system_prompt}\n\nДанные сервера:\n{context_text}\n\nВопрос администратора: {q_clean}"}]
+                            }]
                         },
                     )
-                    if resp.status_code == 200:
-                        answer = resp.json()["choices"]["message"]["content"]
-                if not answer:
-                    import urllib.parse
-                    prompt_full = urllib.parse.quote(f"{system_prompt}\n\nДанные сервера:\n{context_text}\n\nВопрос: {q_clean}")
-                    resp2 = await client.get(f"https://pollinations.ai{prompt_full}")
-                    if resp2.status_code == 200 and resp2.text.strip():
-                        answer = resp2.text.strip()
+                    data = resp.json()
+                    if "candidates" in data:
+                        answer = data["candidates"]["content"]["parts"]["text"]
                     else:
-                        answer = f"Не удалось получить ответ от ИИ (код {resp2.status_code})."
-        except Exception as e:
-            answer = f"Ошибка связи с ИИ: {e}"
+                        answer = f"Ошибка Gemini: {data.get('error', {}).get('message', resp.text[:200])}"
+            except Exception as e:
+                answer = f"Ошибка связи с Gemini: {e}"
 
     return templates.TemplateResponse(request, "ai.html", {
         "admin": admin,
