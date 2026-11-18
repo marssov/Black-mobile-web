@@ -374,7 +374,7 @@ async def staff_page(request: Request):
             game_admins = await cur.fetchall()
             try:
                 await cur.execute(
-                    "SELECT id, name, team, post, last_login FROM accounts WHERE team > 0 AND post >= 10 ORDER BY team ASC"
+                    "SELECT id, name, post AS team, post, last_login FROM accounts WHERE post > 0 ORDER BY post ASC"
                 )
                 leaders = await cur.fetchall()
             except Exception:
