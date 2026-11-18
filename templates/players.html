@@ -4,6 +4,12 @@
 <div class="page-title">Игроки</div>
 <div class="page-sub">Поиск по нику, прежнему нику, UID или IP-адресу</div>
 
+{% if msg == 'ok' %}
+<div class="card" style="border-color: #10B981; background: rgba(16, 185, 129, 0.12); color: #34D399; font-weight: 700; font-size: 13px;">
+    Действие успешно выполнено и записано в логи администрации!
+</div>
+{% endif %}
+
 <form method="get" action="/players" style="display:flex; gap:8px; margin-bottom:18px;">
     <input type="text" name="q" value="{{ q }}" placeholder="Ник, старый ник, UID или IP" class="input-field" style="flex:1;">
     <button type="submit" class="btn btn-primary">Найти</button>
@@ -11,7 +17,7 @@
 
 {% if not q %}
     <div class="card" style="text-align:center; padding:36px 20px;">
-        <div class="bm-muted" style="font-size:14px;">Введите ник, UID или IP-адрес выше, чтобы открыть досье игрока</div>
+        <div style="color:var(--text-muted); font-size:14px;">Введите ник, UID или IP-адрес выше, чтобы открыть досье игрока</div>
     </div>
 
 {% elif not player %}
@@ -20,25 +26,21 @@
     </div>
 
 {% else %}
-    <!-- Карточка профиля -->
     <div class="card" style="display:flex; align-items:center; gap:14px;">
         <div style="width:52px; height:52px; border-radius:14px; background:var(--bg-input); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; color:var(--text-muted); flex-shrink:0;">
             {{ player.name[:2].upper() }}
         </div>
         <div style="flex:1; min-width:0;">
             <div style="font-size:18px; font-weight:800; overflow:hidden; text-overflow:ellipsis;">{{ player.name }}</div>
-            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
-                UID #{{ player.id }}
-                {% if server_online %} · <span style="color:#34D399; font-weight:600;">Сервер онлайн</span>{% endif %}
-            </div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">UID #{{ player.id }}</div>
             <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">
                 {% if player.admin > 0 %}<span class="badge badge-blue">Админ {{ player.admin }} ур.</span>{% endif %}
-                {% if bans_count > 0 %}<span class="badge badge-red">Банов: {{ bans_count }}</span>{% endif %}
+                {% if is_banned %}<span class="badge badge-red">ЗАБАНЕН</span>{% endif %}
+                {% if bans_count > 0 %}<span class="badge badge-gray">Всего банов: {{ bans_count }}</span>{% endif %}
             </div>
         </div>
     </div>
 
-    <!-- Карточка денег и доната -->
     <div class="card">
         <div class="card-label">Деньги и донат</div>
         <div class="stat-grid">
@@ -61,7 +63,6 @@
         </div>
     </div>
 
-    <!-- Карточка данных аккаунта -->
     <div class="card">
         <div class="card-label">Информация об аккаунте</div>
         <div class="data-row"><span class="data-key">Игровой уровень</span><span class="data-val">{{ player.level }} LVL</span></div>
@@ -71,12 +72,11 @@
         <div class="data-row"><span class="data-key">Последний IP</span><a href="/players?q={{ player.last_ip }}" class="data-val" style="text-decoration:underline;">{{ player.last_ip or '—' }}</a></div>
     </div>
 
-    <!-- Твинки по IP -->
     {% if twinks %}
     <div class="card">
         <div class="card-label">Связанные аккаунты (совпадение IP)</div>
         {% for t in twinks %}
-        <a href="/players?q={{ t.id }}" class="data-row" style="text-decoration:none;">
+        <a href="/players?q={{ t.id }}" class="data-row">
             <div>
                 <div style="font-weight:700;">{{ t.name }} <span style="color:var(--text-muted); font-weight:500;">#{{ t.id }}</span></div>
                 <div style="font-size:12px; color:var(--text-muted);">{{ t.level }} LVL · {{ t.money | fmt_num }} ₽</div>
@@ -87,19 +87,17 @@
     </div>
     {% endif %}
 
-    <!-- История ников -->
     {% if old_names %}
     <div class="card">
         <div class="card-label">История смены ников</div>
         <div style="display:flex; flex-wrap:wrap; gap:6px;">
             {% for n in old_names %}
-            <span class="badge" style="background:var(--bg-input); border:1px solid var(--border); padding:5px 10px;">{{ n.name }}</span>
+            <span class="badge badge-gray">{{ n.name }}</span>
             {% endfor %}
         </div>
     </div>
     {% endif %}
 
-    <!-- Управление игроком -->
     {% if admin.role in ['admin', 'owner'] %}
     <div class="card">
         <div class="card-label">Управление игроком</div>
@@ -108,17 +106,19 @@
             <select name="action_type" class="select-field">
                 <option value="money">Выдать наличные (вирты)</option>
                 <option value="rub">Выдать донат (DP)</option>
-                <option value="admin">Установить уровень админки</option>
-                <option value="ban">Забанить (значение = дни)</option>
+                <option value="admin">Установить уровень админки (0 = снять)</option>
+                <option value="ban">Забанить на срок (значение = дни)</option>
+                <option value="permban">Забанить НАВСЕГДА (Пермбан)</option>
+                <option value="unban">Разбанить аккаунт</option>
+                <option value="wipe">ПОЛНОЕ ОБНУЛЕНИЕ (деньги, банк, донат, авто, дома, бизнесы)</option>
             </select>
-            <input type="number" name="value" required placeholder="Сумма / Уровень / Дни" class="input-field">
+            <input type="number" name="value" value="0" placeholder="Сумма / Уровень / Дни (для пермбана/разбана/обнуления оставьте 0)" class="input-field">
             <input type="text" name="reason" value="Выдано через веб-панель" placeholder="Причина для логов" class="input-field">
             <button type="submit" class="btn btn-danger" style="width:100%;">Выполнить действие</button>
         </form>
     </div>
     {% endif %}
 
-    <!-- Денежные операции -->
     {% if recent_money %}
     <div class="card">
         <div class="card-label">Последние операции (money_audit_log)</div>
