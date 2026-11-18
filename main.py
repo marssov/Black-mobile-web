@@ -640,51 +640,46 @@ async def ai_page(request: Request, q: str = ""):
                         if mentioned_player:
                             break
 
-        context_text = (
-            f"Топ-10 богачей: {top_rich}\n"
-            f"Богатые новички (1-3 LVL): {rich_new}\n"
-            f"Последние 15 переводов: {last_money}\n"
-            f"Подозрительные IP (>=3 акк): {twink_ips}\n"
-            f"Упомянутый игрок: {mentioned_player}"
-        )
-        system_prompt = (
-            "Ты — главный ИИ-следователь и аналитик логов RP-проекта BLACK MOBILE. "
-            "Отвечай строго на русском языке, чётко, структурированно и простым понятным текстом без SQL-кода и скобок. "
-            "Опирайся только на переданные данные из базы сервера."
-        )
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Данные сервера:\n{context_text}\n\nВопрос администратора: {q_clean}"},
-        ]
-
         api_key = os.getenv("GROQ_API_KEY", "").strip()
-        try:
-            async with httpx.AsyncClient(timeout=25.0) as client:
-                if api_key:
-                    resp = await client.post(
-                        "https://groq.com",
-                        headers={
-                            "Authorization": f"Bearer {api_key}",
-                            "Content-Type": "application/json",
-                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                        },
-                        json={"model": "llama-3.3-70b-versatile", "messages": messages, "temperature": 0.3, "max_tokens": 900},
-                    )
-                    if resp.status_code == 200 and "choices" in resp.json():
-                        answer = resp.json()["choices"]["message"]["content"]
-
-                if not answer:
-                    resp2 = await client.post(
-                        "https://pollinations.ai",
-                        headers={"Content-Type": "application/json"},
-                        json={"model": "openai", "messages": messages},
-                    )
-                    if resp2.status_code == 200 and "choices" in resp2.json():
-                        answer = resp2.json()["choices"]["message"]["content"]
+        if not api_key:
+            answer = "Ключ GROQ_API_KEY не найден в настройках Render."
+        else:
+            context_text = (
+                f"Топ-10 богатейших игроков: {top_rich}\n"
+                f"Богатые новички (1-3 LVL с балансом > 1кк): {rich_new}\n"
+                f"Последние 15 денежных операций: {last_money}\n"
+                f"Подозрительные IP с >=3 аккаунтами: {twink_ips}\n"
+                f"Упомянутый игрок: {mentioned_player}"
+            )
+            system_prompt = (
+                "Ты — главный ИИ-следователь RP-проекта BLACK MOBILE. "
+                "Отвечай строго на русском языке, чётко и понятным текстом без SQL-кода. "
+                "Опирайся только на переданные данные из базы сервера."
+            )
+            try:
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                }
+                payload = {
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"Данные сервера:\n{context_text}\n\nВопрос: {q_clean}"},
+                    ],
+                    "temperature": 0.3,
+                    "max_tokens": 900,
+                }
+                async with httpx.AsyncClient(timeout=20.0) as client:
+                    resp = await client.post("https://groq.com", headers=headers, json=payload)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        answer = data["choices"][0]["message"]["content"]
                     else:
-                        answer = f"Сервер ИИ временно занят (код {resp2.status_code}). Попробуйте через 10 секунд."
-        except Exception as e:
-            answer = f"Ошибка связи с ИИ: {e}"
+                        answer = f"Сервер ИИ вернул статус {resp.status_code}: {resp.text[:180]}"
+            except Exception as e:
+                answer = f"Ошибка соединения с ИИ: {e}"
 
     return templates.TemplateResponse(request, "ai.html", {
         "admin": admin,
