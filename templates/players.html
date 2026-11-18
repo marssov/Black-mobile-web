@@ -6,7 +6,7 @@
 
 {% if msg == 'ok' %}
 <div class="card" style="border-color: #10B981; background: rgba(16, 185, 129, 0.12); color: #34D399; font-weight: 700; font-size: 13px;">
-    Действие успешно выполнено и записано в логи администрации!
+    Действие успешно выполнено и записано в админ-логи!
 </div>
 {% endif %}
 
@@ -35,6 +35,7 @@
             <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">UID #{{ player.id }}</div>
             <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">
                 {% if player.admin > 0 %}<span class="badge badge-blue">Админ {{ player.admin }} ур.</span>{% endif %}
+                {% if player.team > 0 %}<span class="badge badge-green">Фракция #{{ player.team }} ({{ player.post }} ранг)</span>{% endif %}
                 {% if is_banned %}<span class="badge badge-red">ЗАБАНЕН</span>{% endif %}
                 {% if bans_count > 0 %}<span class="badge badge-gray">Всего банов: {{ bans_count }}</span>{% endif %}
             </div>
@@ -61,6 +62,67 @@
                 <div class="stat-box-val">{{ (real_donated | fmt_num ~ ' ₽') if real_donated > 0 else '0 ₽' }}</div>
             </div>
         </div>
+    </div>
+
+    <div class="card">
+        <div class="card-label">Имущество на аккаунте (Авто: {{ cars|length }} · Дома: {{ houses|length }} · Бизнесы: {{ businesses|length }})</div>
+        {% if not cars and not houses and not businesses %}
+            <div style="font-size:13px; color:var(--text-muted);">На аккаунте нет зарегистрированного имущества</div>
+        {% endif %}
+
+        {% for c in cars %}
+        <div class="data-row">
+            <div>
+                <div style="font-weight:700;">Авто ID #{{ c.id }} (Модель {{ c.model_id }})</div>
+                <div style="font-size:12px; color:var(--text-muted);">Номер: {{ c.number or 'Без номеров' }} · Пробег: {{ c.mileage or 0 }} км</div>
+            </div>
+            {% if admin.role in ['admin', 'owner'] %}
+            <form method="post" action="/players/action">
+                <input type="hidden" name="player_id" value="{{ player.id }}">
+                <input type="hidden" name="action_type" value="del_car">
+                <input type="hidden" name="value" value="{{ c.id }}">
+                <input type="hidden" name="reason" value="Изъятие авто #{{ c.id }}">
+                <button type="submit" class="btn btn-ghost" style="height:32px; padding:0 10px; font-size:11px; color:#F87171;">Изъять</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        {% for h in houses %}
+        <div class="data-row">
+            <div>
+                <div style="font-weight:700;">Дом #{{ h.id }}</div>
+                <div style="font-size:12px; color:var(--text-muted);">Недвижимость игрока</div>
+            </div>
+            {% if admin.role in ['admin', 'owner'] %}
+            <form method="post" action="/players/action">
+                <input type="hidden" name="player_id" value="{{ player.id }}">
+                <input type="hidden" name="action_type" value="del_house">
+                <input type="hidden" name="value" value="{{ h.id }}">
+                <input type="hidden" name="reason" value="Снятие дома #{{ h.id }}">
+                <button type="submit" class="btn btn-ghost" style="height:32px; padding:0 10px; font-size:11px; color:#F87171;">Снять</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        {% for b in businesses %}
+        <div class="data-row">
+            <div>
+                <div style="font-weight:700;">Бизнес #{{ b.id }}</div>
+                <div style="font-size:12px; color:var(--text-muted);">Коммерческий объект</div>
+            </div>
+            {% if admin.role in ['admin', 'owner'] %}
+            <form method="post" action="/players/action">
+                <input type="hidden" name="player_id" value="{{ player.id }}">
+                <input type="hidden" name="action_type" value="del_biz">
+                <input type="hidden" name="value" value="{{ b.id }}">
+                <input type="hidden" name="reason" value="Снятие бизнеса #{{ b.id }}">
+                <button type="submit" class="btn btn-ghost" style="height:32px; padding:0 10px; font-size:11px; color:#F87171;">Снять</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
     </div>
 
     <div class="card">
