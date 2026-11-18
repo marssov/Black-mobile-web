@@ -374,7 +374,7 @@ async def staff_page(request: Request):
             game_admins = await cur.fetchall()
             try:
                 await cur.execute(
-                    "SELECT id, name, post AS team, post, last_login FROM accounts WHERE post > 0 ORDER BY post ASC"
+                    "SELECT id, name, team, post, last_login FROM accounts WHERE team > 0 OR post > 0 ORDER BY team ASC, post DESC LIMIT 50"
                 )
                 leaders = await cur.fetchall()
             except Exception:
@@ -718,7 +718,10 @@ async def ai_page(request: Request, q: str = ""):
             try:
                 async with httpx.AsyncClient(timeout=25.0) as client:
                     resp = await client.post(
-                        f"https://googleapis.com{gemini_key}",
+                        "/".join([
+                            "https:", "", "generativelanguage." + "googleapis." + "com",
+                            "v1beta", "models", "gemini-2.5-flash:generateContent?key=" + gemini_key
+                        ]),
                         headers={"Content-Type": "application/json"},
                         json={
                             "contents": [{
@@ -728,7 +731,7 @@ async def ai_page(request: Request, q: str = ""):
                     )
                     data = resp.json()
                     if "candidates" in data:
-                        answer = data["candidates"]["content"]["parts"]["text"]
+                        answer = data["candidates"][0]["content"]["parts"][0]["text"]
                     else:
                         answer = f"Ошибка Gemini: {data.get('error', {}).get('message', resp.text[:200])}"
             except Exception as e:
