@@ -7,118 +7,50 @@
     <link rel="preconnect" href="https://googleapis.com">
     <link rel="preconnect" href="https://gstatic.com" crossorigin>
     <link href="https://googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    {% if admin and admin.status == 'pending' %}
-    <meta http-equiv="refresh" content="5">
-    {% endif %}
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: radial-gradient(circle at top, #1E1518 0%, #0D1014 60%);
-            color: #F8FAFC;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            color: #F8FAFC; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
         }
         .login-card {
-            width: 100%;
-            max-width: 400px;
-            background: #15191F;
-            border: 1px solid #262C36;
-            border-radius: 20px;
-            padding: 28px 24px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+            width: 100%; max-width: 400px; background: #15191F; border: 1px solid #262C36;
+            border-radius: 20px; padding: 28px 24px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
         }
-        .brand-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            margin-bottom: 26px;
-        }
+        .brand-box { display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 24px; }
         .logo-badge {
-            width: 56px;
-            height: 56px;
-            border-radius: 16px;
+            width: 56px; height: 56px; border-radius: 16px;
             background: linear-gradient(135deg, #EF4444, #991B1B);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 20px;
-            color: #FFF;
-            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
-            margin-bottom: 14px;
-            overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 20px; color: #FFF;
+            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4); margin-bottom: 14px; overflow: hidden;
         }
         .logo-badge img { width: 100%; height: 100%; object-fit: cover; }
-        .project-title {
-            font-size: 22px;
-            font-weight: 800;
-            letter-spacing: 0.04em;
-            color: #FFFFFF;
-        }
-        .project-sub {
-            font-size: 13px;
-            color: #94A3B8;
-            margin-top: 4px;
-        }
+        .project-title { font-size: 22px; font-weight: 800; letter-spacing: 0.04em; color: #FFFFFF; }
+        .project-sub { font-size: 13px; color: #94A3B8; margin-top: 4px; }
         .form-group { margin-bottom: 16px; }
-        .form-label {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: #CBD5E1;
-            margin-bottom: 8px;
-        }
+        .form-label { display: block; font-size: 13px; font-weight: 600; color: #CBD5E1; margin-bottom: 8px; }
         .form-input {
-            width: 100%;
-            height: 48px;
-            padding: 0 15px;
-            border-radius: 12px;
-            background: #0D1014;
-            border: 1px solid #2A313C;
-            color: #FFFFFF;
-            font-family: inherit;
-            font-size: 15px;
-            font-weight: 500;
-            outline: none;
+            width: 100%; height: 48px; padding: 0 15px; border-radius: 12px;
+            background: #0D1014; border: 1px solid #2A313C; color: #FFFFFF;
+            font-family: inherit; font-size: 15px; font-weight: 500; outline: none;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
         .form-input::placeholder { color: #475569; }
-        .form-input:focus {
-            border-color: #EF4444;
-            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
-        }
+        .form-input:focus { border-color: #EF4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2); }
         .submit-btn {
-            width: 100%;
-            height: 50px;
-            margin-top: 6px;
-            border: none;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #EF4444, #DC2626);
-            color: #FFFFFF;
-            font-family: inherit;
-            font-size: 15px;
-            font-weight: 700;
-            cursor: pointer;
-            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
-            transition: transform 0.12s, opacity 0.15s;
+            width: 100%; height: 50px; margin-top: 6px; border: none; border-radius: 12px;
+            background: linear-gradient(135deg, #EF4444, #DC2626); color: #FFFFFF;
+            font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35); transition: transform 0.12s;
         }
         .submit-btn:active { transform: scale(0.98); }
-        .alert {
-            padding: 14px;
-            border-radius: 12px;
-            font-size: 13px;
-            line-height: 1.5;
-            margin-bottom: 18px;
-            text-align: center;
+        .alert-error {
+            padding: 13px; border-radius: 12px; font-size: 13px; line-height: 1.5; margin-bottom: 16px;
+            text-align: center; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); color: #FCA5A5;
         }
-        .alert-error { background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); color: #FCA5A5; }
-        .alert-wait { background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); color: #FCD34D; }
-        .logout-link { display: inline-block; margin-top: 12px; color: #94A3B8; font-size: 12px; text-decoration: underline; }
+        .hint { font-size: 12px; color: #64748B; text-align: center; margin-top: 16px; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -128,38 +60,26 @@
                 {% if logo_url %}<img src="{{ logo_url }}" alt="logo">{% else %}{{ project_short }}{% endif %}
             </div>
             <div class="project-title">{{ project_name }}</div>
-            <div class="project-sub">Административная панель и логи</div>
+            <div class="project-sub">Защищённый вход для администрации</div>
         </div>
 
-        {% if admin and admin.status == 'pending' %}
-            <div class="alert alert-wait">
-                <div style="font-weight:700; font-size:15px; margin-bottom:6px;">Заявка на проверке</div>
-                Аккаунт <strong>{{ admin.nickname }}</strong> ожидает одобрения главного администратора. Страница обновится сама.
-                <br><a href="/logout" class="logout-link">Отменить и выйти</a>
-            </div>
-        {% elif admin and admin.status == 'rejected' %}
-            <div class="alert alert-error">
-                <div style="font-weight:700; font-size:15px; margin-bottom:6px;">Доступ закрыт</div>
-                Главный администратор отклонил ваш запрос.
-                <br><a href="/logout" class="logout-link">Выйти</a>
-            </div>
-        {% else %}
-            {% if error %}
-            <div class="alert alert-error">{{ error }}</div>
-            {% endif %}
-
-            <form method="post" action="/login">
-                <div class="form-group">
-                    <label class="form-label">Игровой Nick_Name</label>
-                    <input type="text" name="nickname" required autocomplete="off" placeholder="Введите ваш никнейм" class="form-input">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Секретный пароль доступа</label>
-                    <input type="password" name="password" required placeholder="Введите пароль панели" class="form-input">
-                </div>
-                <button type="submit" class="submit-btn">Войти в панель</button>
-            </form>
+        {% if error %}
+        <div class="alert-error">{{ error }}</div>
         {% endif %}
+
+        <form method="post" action="/login">
+            <div class="form-group">
+                <label class="form-label">Игровой Nick_Name</label>
+                <input type="text" name="nickname" required autocomplete="off" placeholder="Например: Mars_Capone" class="form-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Личный пароль или код приглашения</label>
+                <input type="password" name="secret" required placeholder="Введите пароль или одноразовый код" class="form-input">
+            </div>
+            <button type="submit" class="submit-btn">Войти в систему</button>
+        </form>
+
+        <div class="hint">При первом входе по одноразовому коду система выдаст вам личный постоянный пароль.</div>
     </div>
 </body>
 </html>
