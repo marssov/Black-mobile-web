@@ -25,7 +25,6 @@ templates.env.globals["logo_url"] = os.getenv("LOGO_URL", "")
 
 OWNER_NICK = os.getenv("OWNER_NICK", "Mars_Capone")
 OWNER_PASSWORD = os.getenv("OWNER_PASSWORD", "HrK2138DgFi0")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
 LOGIN_FAILS: dict[str, list[float]] = {}
 
@@ -193,7 +192,6 @@ async def login_submit(request: Request, nickname: str = Form(...), secret: str 
 
     async with pool.acquire() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cur:
-            # 1. Проверка существующего администратора
             await cur.execute("SELECT * FROM web_admins WHERE nickname = %s", (nick,))
             adm = await cur.fetchone()
             if adm:
@@ -210,7 +208,6 @@ async def login_submit(request: Request, nickname: str = Form(...), secret: str 
                         {"error": "Неверный личный пароль доступа.", "new_pass": None}
                     )
 
-            # 2. Проверка одноразового инвайт-кода
             await cur.execute("SELECT * FROM web_invites WHERE code = %s", (sec,))
             inv = await cur.fetchone()
             if inv:
@@ -491,11 +488,14 @@ async def players_page(request: Request, q: str = "", msg: str = ""):
 
                 if player:
                     pid = player["id"]
-                    await cur.execute(
-                        "SELECT id, name, level, money FROM accounts WHERE (reg_ip = %s OR last_ip = %s) AND id != %s AND %s != '' LIMIT 15",
-                        (player["reg_ip"], player["last_ip"], pid, player["last_ip"]),
-                    )
-                    twinks = await cur.fetchall()
+                    try:
+                        await cur.execute(
+                            "SELECT id, name, level, money FROM accounts WHERE (reg_ip = %s OR last_ip = %s) AND id != %s AND %s != '' LIMIT 15",
+                            (player.get("reg_ip", ""), player.get("last_ip", ""), pid, player.get("last_ip", "")),
+                        )
+                        twinks = await cur.fetchall()
+                    except Exception:
+                        twinks = []
                     try:
                         await cur.execute("SELECT name FROM change_names WHERE uid = %s ORDER BY id DESC LIMIT 15", (pid,))
                         old_names = await cur.fetchall()
@@ -506,13 +506,19 @@ async def players_page(request: Request, q: str = "", msg: str = ""):
                         real_donated = int((await cur.fetchone())["s"])
                     except Exception:
                         real_donated = 0
-                    await cur.execute("SELECT COUNT(*) AS c FROM ban_list WHERE user_id = %s", (pid,))
-                    bans_count = (await cur.fetchone())["c"]
-                    now_ts = int(time.time())
-                    await cur.execute("SELECT id FROM ban_list WHERE user_id = %s AND ban_time > %s LIMIT 1", (pid, now_ts))
-                    is_banned = bool(await cur.fetchone())
-                    await cur.execute("SELECT * FROM money_audit_log WHERE uid = %s ORDER BY time DESC LIMIT 20", (pid,))
-                    recent_money = await cur.fetchall()
+                    try:
+                        await cur.execute("SELECT COUNT(*) AS c FROM ban_list WHERE user_id = %s", (pid,))
+                        bans_count = (await cur.fetchone())["c"]
+                        now_ts = int(time.time())
+                        await cur.execute("SELECT id FROM ban_list WHERE user_id = %s AND ban_time > %s LIMIT 1", (pid, now_ts))
+                        is_banned = bool(await cur.fetchone())
+                    except Exception:
+                        bans_count = 0
+                    try:
+                        await cur.execute("SELECT * FROM money_audit_log WHERE uid = %s ORDER BY time DESC LIMIT 20", (pid,))
+                        recent_money = await cur.fetchall()
+                    except Exception:
+                        recent_money = []
 
     return templates.TemplateResponse(request, "players.html", {
         "admin": admin,
@@ -624,7 +630,7 @@ async def ai_page(request: Request, q: str = ""):
                 top_rich = await cur.fetchall()
                 await cur.execute("SELECT id, name, level, (money + bank) AS wealth, reg_ip FROM accounts WHERE level <= 3 AND (money + bank) >= 1000000 ORDER BY wealth DESC LIMIT 10")
                 rich_new = await cur.fetchall()
-                await cur.execute("SELECT player_name, counterparty_name, amount, description FROM money_audit_log ORDER BY time DESC LIMIT 15")
+                await cur.execute("SELECT player_name, counterparty_name, amount, description, time FROM money_audit_log ORDER BY time DESC LIMIT 15")
                 last_money = await cur.fetchall()
                 await cur.execute("SELECT reg_ip, COUNT(*) AS cnt, GROUP_CONCAT(name SEPARATOR ', ') AS names FROM accounts WHERE reg_ip != '' GROUP BY reg_ip HAVING cnt >= 3 ORDER BY cnt DESC LIMIT 10")
                 twink_ips = await cur.fetchall()
@@ -640,46 +646,38 @@ async def ai_page(request: Request, q: str = ""):
                         if mentioned_player:
                             break
 
-        api_key = os.getenv("GROQ_API_KEY", "").strip()
-        if not api_key:
-            answer = "Ключ GROQ_API_KEY не найден в настройках Render."
-        else:
-            context_text = (
-                f"Топ-10 богатейших игроков: {top_rich}\n"
-                f"Богатые новички (1-3 LVL с балансом > 1кк): {rich_new}\n"
-                f"Последние 15 денежных операций: {last_money}\n"
-                f"Подозрительные IP с >=3 аккаунтами: {twink_ips}\n"
-                f"Упомянутый игрок: {mentioned_player}"
-            )
-            system_prompt = (
-                "Ты — главный ИИ-следователь RP-проекта BLACK MOBILE. "
-                "Отвечай строго на русском языке, чётко и понятным текстом без SQL-кода. "
-                "Опирайся только на переданные данные из базы сервера."
-            )
-            try:
-                headers = {
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                }
-                payload = {
-                    "model": "llama-3.3-70b-versatile",
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Данные сервера:\n{context_text}\n\nВопрос: {q_clean}"},
-                    ],
-                    "temperature": 0.3,
-                    "max_tokens": 900,
-                }
-                async with httpx.AsyncClient(timeout=20.0) as client:
-                    resp = await client.post("https://groq.com", headers=headers, json=payload)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        answer = data["choices"][0]["message"]["content"]
-                    else:
-                        answer = f"Сервер ИИ вернул статус {resp.status_code}: {resp.text[:180]}"
-            except Exception as e:
-                answer = f"Ошибка соединения с ИИ: {e}"
+        context_text = (
+            f"Топ-10 богатейших игроков: {top_rich}\n"
+            f"Богатые новички (1-3 LVL с балансом > 1кк): {rich_new}\n"
+            f"Последние 15 денежных операций: {last_money}\n"
+            f"Подозрительные IP с >=3 аккаунтами: {twink_ips}\n"
+            f"Упомянутый в запросе игрок: {mentioned_player}"
+        )
+        system_prompt = (
+            "Ты — главный ИИ-следователь и аналитик логов RP-проекта BLACK MOBILE. "
+            "Отвечай строго на русском языке, чётко, структурированно и простым понятным текстом без SQL-кода. "
+            "Опирайся только на переданные данные из базы сервера."
+        )
+        try:
+            async with httpx.AsyncClient(timeout=25.0) as client:
+                resp = await client.post(
+                    "https://pollinations.ai",
+                    headers={"Content-Type": "application/json"},
+                    json={
+                        "model": "openai",
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": f"Данные сервера:\n{context_text}\n\nВопрос администратора: {q_clean}"},
+                        ],
+                    },
+                )
+                if resp.status_code == 200 and resp.text.strip():
+                    data = resp.json()
+                    answer = data["choices"]["message"]["content"]
+                else:
+                    answer = f"Сервер ИИ временно занят (код {resp.status_code}). Попробуйте повторить запрос через пару секунд."
+        except Exception as e:
+            answer = f"Не удалось связаться с сервером ИИ: {e}"
 
     return templates.TemplateResponse(request, "ai.html", {
         "admin": admin,
@@ -687,3 +685,4 @@ async def ai_page(request: Request, q: str = ""):
         "q": q_clean,
         "answer": answer,
     })
+
