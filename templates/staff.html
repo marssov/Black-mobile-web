@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-title">Администрация сервера</div>
+<div class="page-sub">Список всех действующих администраторов в игре и лидеров фракций</div>
+
+<div class="card">
+    <div class="card-label">Администраторы в игре ({{ game_admins|length }})</div>
+    {% for a in game_admins %}
+    <a href="/players?q={{ a.id }}" class="data-row">
+        <div style="text-align:left;">
+            <div style="font-weight:700; display:flex; align-items:center; gap:8px;">
+                {{ a.name }}
+                <span class="badge badge-blue">{{ a.admin }} ур.</span>
+            </div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+                UID #{{ a.id }} · Вход: {{ a.last_login | fmt_date }}
+            </div>
+        </div>
+        <div class="data-val" style="font-size:12px; color:var(--text-muted);">IP {{ a.last_ip or '—' }}</div>
+    </a>
+    {% endfor %}
+</div>
+
+{% if leaders %}
+<div class="card">
+    <div class="card-label">Лидеры организаций ({{ leaders|length }})</div>
+    {% for l in leaders %}
+    <div class="data-row">
+        <div style="text-align:left;">
+            <div style="font-weight:700;">{{ l.name or l.leader or 'Лидер #' ~ l.id }}</div>
+            <div style="font-size:12px; color:var(--text-muted);">Фракция #{{ l.fraction or l.id }}</div>
+        </div>
+        <span class="badge badge-green">Лидер</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
