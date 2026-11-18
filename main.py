@@ -15,7 +15,7 @@ app = FastAPI()
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SECRET_KEY", "black-mobile-super-secret-key-2026"),
-    max_age=7200,
+        max_age=2592000,
 )
 
 templates = Jinja2Templates(directory="templates")
@@ -349,7 +349,9 @@ async def staff_page(request: Request):
             )
             game_admins = await cur.fetchall()
             try:
-                await cur.execute("SELECT * FROM leaders ORDER BY id ASC LIMIT 30")
+                await cur.execute(
+                    "SELECT id, name, leader, rank FROM accounts WHERE leader > 0 ORDER BY leader ASC"
+                )
                 leaders = await cur.fetchall()
             except Exception:
                 leaders = []
@@ -510,7 +512,7 @@ async def players_page(request: Request, q: str = "", msg: str = ""):
                         await cur.execute("SELECT COUNT(*) AS c FROM ban_list WHERE user_id = %s", (pid,))
                         bans_count = (await cur.fetchone())["c"]
                         now_ts = int(time.time())
-                        await cur.execute("SELECT id FROM ban_list WHERE user_id = %s AND ban_time > %s LIMIT 1", (pid, now_ts))
+                        await cur.execute("SELECT id FROM ban_list WHERE user_id = %s AND (ban_time > %s OR ban_time = 0) LIMIT 1", (pid, now_ts))
                         is_banned = bool(await cur.fetchone())
                     except Exception:
                         bans_count = 0
@@ -571,7 +573,7 @@ async def player_action(
             elif action_type == "permban":
                 await cur.execute(
                     "INSERT INTO ban_list (user_id, time, ban_time, ip, description, admin) VALUES (%s, %s, %s, %s, %s, %s)",
-                    (player_id, now_ts, 2147483647, target["last_ip"] or "", reason[:32], admin["nickname"][:24]),
+                    (player_id, now_ts, 0, target["last_ip"] or "", reason[:32], admin["nickname"][:24]),
                 )
             elif action_type == "unban":
                 await cur.execute("DELETE FROM ban_list WHERE user_id = %s", (player_id,))
