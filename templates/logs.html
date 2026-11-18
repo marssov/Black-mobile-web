@@ -2,58 +2,90 @@
 {% block content %}
 
 <div class="page-title">Журналы логов</div>
-<div class="page-sub">Единая лента событий сервера с фильтрацией</div>
+<div class="page-sub">Мониторинг операций, обменов, античита и действий администрации в панели</div>
 
 <div style="display:flex; gap:8px; overflow-x:auto; margin-bottom:16px; padding-bottom:4px;">
     <a href="/logs?cat=money" class="tab-link {{ 'active' if cat == 'money' else '' }}">Денежные</a>
-    <a href="/logs?cat=admin" class="tab-link {{ 'active' if cat == 'admin' else '' }}">Админ-действия</a>
-    <a href="/logs?cat=bans" class="tab-link {{ 'active' if cat == 'bans' else '' }}">Блокировки</a>
+    <a href="/logs?cat=trades" class="tab-link {{ 'active' if cat == 'trades' else '' }}">Обмены (Трейды)</a>
+    <a href="/logs?cat=anticheat" class="tab-link {{ 'active' if cat == 'anticheat' else '' }}">Античит</a>
+    <a href="/logs?cat=admin" class="tab-link {{ 'active' if cat == 'admin' else '' }}">Админ-логи</a>
+    <a href="/logs?cat=bans" class="tab-link {{ 'active' if cat == 'bans' else '' }}">Баны</a>
 </div>
 
 <div class="card">
-    {% if cat == 'money' %}
-        <div class="card-label">Последние 30 денежных операций</div>
-        {% for row in items %}
-        <div style="padding:10px 0; border-bottom:1px solid var(--border);">
-            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:4px;">
-                <span>{{ row.time | fmt_date }}</span>
-                <span>IP {{ row.uip }}</span>
-            </div>
-            <div style="font-size:13px; font-weight:700;">{{ row.description or 'Операция' }}</div>
-            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
-                <a href="/players?q={{ row.uid }}" style="text-decoration:underline;">{{ row.player_name }}</a>
-                → {{ row.counterparty_name or '—' }}
-                <span style="color:#34D399; font-weight:700; margin-left:4px;">{{ row.amount | fmt_num }} ₽</span>
-            </div>
-        </div>
-        {% endfor %}
+    {% if not items %}
+        <div style="text-align:center; padding:24px; color:var(--text-muted); font-size:13px;">Записей в этом журнале пока нет</div>
+    {% else %}
+        {% for item in items %}
+        <div style="padding:12px 0; border-bottom:1px solid var(--border);">
+            {% if cat == 'money' %}
+                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:4px;">
+                    <span>{{ item.time | fmt_date }}</span>
+                    <span>IP {{ item.uip }}</span>
+                </div>
+                <div style="font-size:13px; font-weight:700;">{{ item.description or 'Операция' }}</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+                    {{ item.player_name }} → {{ item.counterparty_name or '—' }}
+                    <span style="color:#34D399; font-weight:700; margin-left:4px;">{{ item.amount | fmt_num }} ₽</span>
+                </div>
 
-    {% elif cat == 'admin' %}
-        <div class="card-label">Логи действий администрации (aclogs)</div>
-        {% for row in items %}
-        <div style="padding:10px 0; border-bottom:1px solid var(--border);">
-            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:4px;">
-                <span>{{ row.date }}</span>
-                <span class="badge badge-blue">{{ row.type }}</span>
-            </div>
-            <div style="font-size:13px; font-weight:700;">{{ row.name }}</div>
-            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">{{ row.data }} ({{ row.reason }})</div>
-        </div>
-        {% endfor %}
+            {% elif cat == 'trades' %}
+                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:4px;">
+                    <span>{{ item.time | fmt_date }}</span>
+                    <span>Сессия #{{ item.session_id }}</span>
+                </div>
+                <div style="font-size:13px; font-weight:700;">
+                    <a href="/players?q={{ item.a_uid }}" style="text-decoration:underline;">{{ item.a_name }}</a>
+                    ↔
+                    <a href="/players?q={{ item.b_uid }}" style="text-decoration:underline;">{{ item.b_name }}</a>
+                </div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">
+                    Деньги: <strong style="color:#34D399;">{{ item.a_money_offer | fmt_num }} ₽</strong> ↔ <strong style="color:#34D399;">{{ item.b_money_offer | fmt_num }} ₽</strong> ·
+                    Предметы: <strong>{{ item.a_items_count }} шт.</strong> ↔ <strong>{{ item.b_items_count }} шт.</strong>
+                </div>
 
-    {% elif cat == 'bans' %}
-        <div class="card-label">Журнал блокировок (ban_list)</div>
-        {% for row in items %}
-        <div style="padding:10px 0; border-bottom:1px solid var(--border);">
-            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:4px;">
-                <span>Выдан: {{ row.time | fmt_date }}</span>
-                <span>До: {{ row.ban_time | fmt_date }}</span>
-            </div>
-            <div style="font-size:13px; font-weight:700;">
-                <a href="/players?q={{ row.user_id }}" style="text-decoration:underline;">UID #{{ row.user_id }}</a>
-                · Админ: {{ row.admin }}
-            </div>
-            <div style="font-size:12px; color:#F87171; margin-top:2px;">Причина: {{ row.description }}</div>
+            {% elif cat == 'anticheat' %}
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--text-muted); margin-bottom:4px;">
+                    <span>{{ item.created_at | fmt_date }}</span>
+                    <span class="badge {{ 'badge-red' if item.kicked else 'badge-gold' }}">{{ 'Кикнут' if item.kicked else 'Предупреждение' }}</span>
+                </div>
+                <div style="font-size:13px; font-weight:700;">
+                    <a href="/players?q={{ item.account_id }}" style="text-decoration:underline;">{{ item.name }}</a>
+                    <span style="color:var(--text-muted); font-weight:500;">#{{ item.account_id }}</span>
+                </div>
+                <div style="font-size:12px; color:#F87171; margin-top:2px;">Код срабатывания античита: #{{ item.code }}</div>
+
+            {% elif cat == 'admin' %}
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--text-muted); margin-bottom:4px;">
+                    <span>{{ item.date }}</span>
+                    {% if item.type and item.type.startswith('web_') %}
+                        <span class="badge badge-purple">Веб-панель · {{ item.type }}</span>
+                    {% else %}
+                        <span>{{ item.type }}</span>
+                    {% endif %}
+                </div>
+                <div style="font-size:13px; font-weight:700;">{{ item.name }} → {{ item.data }}</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Причина: {{ item.reason or '—' }}</div>
+
+            {% elif cat == 'bans' %}
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                    <div>
+                        <div style="font-size:13px; font-weight:700;">
+                            <a href="/players?q={{ item.user_id }}" style="text-decoration:underline;">{{ item.player_name or ('UID #' ~ item.user_id) }}</a>
+                            <span style="font-size:11px; color:var(--text-muted); margin-left:6px;">Админ: {{ item.admin }}</span>
+                        </div>
+                        <div style="font-size:12px; color:#F87171; margin-top:2px;">
+                            Причина: {{ item.description or '—' }} · До: {{ item.ban_time | fmt_date }}
+                        </div>
+                    </div>
+                    {% if admin.role in ['admin', 'owner'] %}
+                    <form method="post" action="/logs/unban">
+                        <input type="hidden" name="user_id" value="{{ item.user_id }}">
+                        <button type="submit" class="btn btn-ghost" style="height:34px; padding:0 10px; font-size:12px; color:#34D399;">Разбанить</button>
+                    </form>
+                    {% endif %}
+                </div>
+            {% endif %}
         </div>
         {% endfor %}
     {% endif %}
