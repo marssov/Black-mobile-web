@@ -5,3 +5,4 @@ aiomysql
 aiosqlite
 python-multipart
 itsdangerous
+httpx
