@@ -1,6 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
 
+{% if just_pass %}
+<div class="card" style="border-color: #10B981; background: rgba(16, 185, 129, 0.1);">
+    <div style="font-weight:800; font-size:15px; color:#34D399; margin-bottom:6px;">Доступ успешно активирован!</div>
+    <div style="font-size:13px; line-height:1.5;">
+        Ваш одноразовый код сработал и больше недействителен. Запишите ваш <strong>личный постоянный пароль</strong> для всех следующих входов:
+        <div style="margin-top:8px; padding:10px; border-radius:10px; background:var(--bg-input); font-size:16px; font-weight:800; letter-spacing:0.06em; color:#FBBF24; text-align:center;">
+            {{ just_pass }}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="page-title">Обзор сервера</div>
 <div class="page-sub">Общая сводка активности и ключевые показатели</div>
 
@@ -20,7 +32,7 @@
             <div class="stat-box-val" style="color:#60A5FA;">{{ stats.active_24h | fmt_num }}</div>
         </div>
         <div class="stat-box">
-            <div class="stat-box-title">Администраторов</div>
+            <div class="stat-box-title">Администраторов в игре</div>
             <div class="stat-box-val">{{ stats.admins_count | fmt_num }}</div>
         </div>
     </div>
