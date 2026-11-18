@@ -1,72 +1,125 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="page-title">Команда</div>
-<div class="page-sub">Управление доступом администраторов к веб-панели</div>
+<div class="page-title">Команда панели</div>
+<div class="page-sub">Управление составом, цветными префиксами и одноразовыми кодами</div>
 
-{% if pending %}
-<div class="card" style="border-color: rgba(245, 158, 11, 0.45);">
-    <div class="card-label" style="color: #FBBF24;">Ожидают одобрения ({{ pending|length }})</div>
-    {% for p in pending %}
-    <div style="padding: 12px 0; border-bottom: 1px solid var(--border);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <div>
-                <div style="font-weight:700; font-size:15px;">{{ p.nickname }}</div>
-                <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">IP: {{ p.ip }} · {{ p.created_at | fmt_date }}</div>
+{% if admin.role == 'owner' %}
+<div class="card" style="border-color: rgba(168, 85, 247, 0.45);">
+    <div class="card-label" style="color:#C084FC;">Создать одноразовый код приглашения</div>
+    <form method="post" action="/team/invite" style="display:grid; gap:10px;">
+        <input type="text" name="target_nick" placeholder="Ник админа (оставьте пустым, если для любого)" class="input-field">
+        
+        <select name="role" class="select-field">
+            <option value="moder">Права: Только просмотр (Мл. админ / Следящий)</option>
+            <option value="admin">Права: Полное управление игроками (Ст. админ / ЗГА / ГА)</option>
+        </select>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+            <select name="prefix_preset" class="select-field">
+                <option value="Спец. администратор">Спец. администратор</option>
+                <option value="Тех. специалист">Тех. специалист</option>
+                <option value="ГА">ГА</option>
+                <option value="ОЗГА">ОЗГА</option>
+                <option value="ЗГА">ЗГА</option>
+                <option value="Ст. администратор">Ст. администратор</option>
+                <option value="Мл. администратор">Мл. администратор</option>
+            </select>
+
+            <select name="prefix_color" class="select-field">
+                <option value="red">Цвет: Красный</option>
+                <option value="cyan">Цвет: Бирюзовый</option>
+                <option value="gold">Цвет: Золотой</option>
+                <option value="blue">Цвет: Синий</option>
+                <option value="green">Цвет: Зелёный</option>
+                <option value="purple">Цвет: Фиолетовый</option>
+                <option value="gray">Цвет: Серый</option>
+            </select>
+        </div>
+
+        <input type="text" name="custom_prefix" placeholder="Или впишите свой префикс (необязательно)" class="input-field">
+        <button type="submit" class="btn btn-primary" style="width:100%;">Сгенерировать код доступа</button>
+    </form>
+
+    {% if invites %}
+    <div style="margin-top:16px; border-top:1px solid var(--border); padding-top:12px;">
+        <div class="card-label">Активные одноразовые коды ({{ invites|length }})</div>
+        {% for inv in invites %}
+        <div class="data-row">
+            <div style="text-align:left;">
+                <div style="font-weight:800; font-size:14px; letter-spacing:0.04em; color:#34D399;">{{ inv.code }}</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+                    Для: <strong>{{ inv.target_nick or 'Любого ника' }}</strong> ·
+                    <span class="badge badge-{{ inv.prefix_color }}">{{ inv.prefix }}</span>
+                </div>
             </div>
-            <span class="badge" style="background:rgba(245,158,11,0.15); color:#FBBF24;">Запрос</span>
-        </div>
-
-        {% if admin.role == 'owner' %}
-        <div style="display:flex; flex-wrap:wrap; gap:8px;">
-            <form method="post" action="/team/decide" style="display:flex; gap:8px; flex:1; min-width:220px;">
-                <input type="hidden" name="target_id" value="{{ p.id }}">
-                <input type="hidden" name="decision" value="approve">
-                <select name="role" class="select-field" style="height:40px; font-size:13px;">
-                    <option value="moder">Мл. админ (просмотр)</option>
-                    <option value="admin">Ст. админ (выдача и баны)</option>
-                </select>
-                <button type="submit" class="btn btn-success" style="height:40px; font-size:13px;">Одобрить</button>
-            </form>
-
-            <form method="post" action="/team/decide">
-                <input type="hidden" name="target_id" value="{{ p.id }}">
-                <input type="hidden" name="decision" value="reject">
-                <button type="submit" class="btn btn-danger" style="height:40px; font-size:13px;">Отказать</button>
+            <form method="post" action="/team/manage">
+                <input type="hidden" name="action" value="del_invite">
+                <input type="hidden" name="target_id" value="{{ inv.id }}">
+                <button type="submit" class="btn btn-ghost" style="height:34px; padding:0 10px; font-size:12px; color:#F87171;">Удалить</button>
             </form>
         </div>
-        {% endif %}
+        {% endfor %}
     </div>
-    {% endfor %}
+    {% endif %}
 </div>
 {% endif %}
 
 <div class="card">
-    <div class="card-label">Действующий состав</div>
+    <div class="card-label">Действующий состав ({{ members|length }})</div>
     {% for m in members %}
-    <div class="data-row">
-        <div style="text-align:left;">
-            <div style="font-weight:700; font-size:14px; display:flex; align-items:center; gap:8px;">
-                {{ m.nickname }}
-                {% if m.role == 'owner' %}
-                <span class="badge badge-purple">Владелец</span>
-                {% elif m.role == 'admin' %}
-                <span class="badge badge-blue">Ст. админ</span>
-                {% else %}
-                <span class="badge" style="background:var(--bg-input); border:1px solid var(--border);">Мл. админ</span>
-                {% endif %}
-            </div>
-            <div style="font-size:12px; color:var(--text-muted); margin-top:3px;">
-                {{ 'Активен' if m.status == 'approved' else 'Отклонён' }} · IP {{ m.ip }}
+    <div style="padding:12px 0; border-bottom:1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <div>
+                <div style="font-weight:700; font-size:15px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    {{ m.nickname }}
+                    <span class="badge badge-{{ m.prefix_color }}">{{ m.prefix }}</span>
+                </div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:3px;">
+                    Доступ: {{ 'Полный (Владелец)' if m.role == 'owner' else ('Управление игроками' if m.role == 'admin' else 'Только просмотр') }} · IP {{ m.last_ip or '—' }}
+                </div>
             </div>
         </div>
 
         {% if admin.role == 'owner' and m.role != 'owner' %}
-        <form method="post" action="/team/decide">
-            <input type="hidden" name="target_id" value="{{ m.id }}">
-            <input type="hidden" name="decision" value="delete">
-            <button type="submit" class="btn btn-ghost" style="height:36px; padding:0 12px; font-size:12px; color:#F87171;">Удалить</button>
-        </form>
+        <div style="margin-top:10px; padding:10px; border-radius:10px; background:var(--bg-input); border:1px solid var(--border);">
+            <div style="font-size:12px; margin-bottom:8px;">
+                Личный пароль: <strong style="color:#FBBF24; letter-spacing:0.04em;">{{ m.password_plain }}</strong>
+            </div>
+
+            <form method="post" action="/team/manage" style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-bottom:8px;">
+                <input type="hidden" name="action" value="update_prefix">
+                <input type="hidden" name="target_id" value="{{ m.id }}">
+                <input type="text" name="prefix" value="{{ m.prefix }}" placeholder="Префикс" class="input-field" style="height:36px; font-size:12px;">
+                <select name="prefix_color" class="select-field" style="height:36px; font-size:12px;">
+                    <option value="red" {{ 'selected' if m.prefix_color=='red' else '' }}>Красный</option>
+                    <option value="cyan" {{ 'selected' if m.prefix_color=='cyan' else '' }}>Бирюзовый</option>
+                    <option value="gold" {{ 'selected' if m.prefix_color=='gold' else '' }}>Золотой</option>
+                    <option value="blue" {{ 'selected' if m.prefix_color=='blue' else '' }}>Синий</option>
+                    <option value="green" {{ 'selected' if m.prefix_color=='green' else '' }}>Зелёный</option>
+                    <option value="purple" {{ 'selected' if m.prefix_color=='purple' else '' }}>Фиолетовый</option>
+                    <option value="gray" {{ 'selected' if m.prefix_color=='gray' else '' }}>Серый</option>
+                </select>
+                <select name="role" class="select-field" style="height:36px; font-size:12px;">
+                    <option value="moder" {{ 'selected' if m.role=='moder' else '' }}>Только просмотр</option>
+                    <option value="admin" {{ 'selected' if m.role=='admin' else '' }}>Управление игроками</option>
+                </select>
+                <button type="submit" class="btn btn-primary" style="height:36px; font-size:12px;">Сохранить</button>
+            </form>
+
+            <div style="display:flex; gap:6px;">
+                <form method="post" action="/team/manage" style="flex:1;">
+                    <input type="hidden" name="action" value="reset_pass">
+                    <input type="hidden" name="target_id" value="{{ m.id }}">
+                    <button type="submit" class="btn btn-ghost" style="width:100%; height:34px; font-size:12px;">Сбросить пароль и сессию</button>
+                </form>
+                <form method="post" action="/team/manage">
+                    <input type="hidden" name="action" value="delete_member">
+                    <input type="hidden" name="target_id" value="{{ m.id }}">
+                    <button type="submit" class="btn btn-danger" style="height:34px; padding:0 12px; font-size:12px;">Удалить</button>
+                </form>
+            </div>
+        </div>
         {% endif %}
     </div>
     {% endfor %}
