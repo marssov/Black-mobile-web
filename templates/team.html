@@ -11,8 +11,9 @@
         <input type="text" name="target_nick" placeholder="Ник админа (оставьте пустым, если для любого)" class="input-field">
         
         <select name="role" class="select-field">
-            <option value="moder">Права: Только просмотр (Мл. админ / Следящий)</option>
-            <option value="admin">Права: Полное управление игроками (Ст. админ / ЗГА / ГА)</option>
+            <option value="moder">1. Только просмотр</option>
+            <option value="admin">2. Просмотр и управление игроками</option>
+            <option value="owner">3. Полный доступ (как у Владельца)</option>
         </select>
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
@@ -76,12 +77,12 @@
                     <span class="badge badge-{{ m.prefix_color }}">{{ m.prefix }}</span>
                 </div>
                 <div style="font-size:12px; color:var(--text-muted); margin-top:3px;">
-                    Доступ: {{ 'Полный (Владелец)' if m.role == 'owner' else ('Управление игроками' if m.role == 'admin' else 'Только просмотр') }} · IP {{ m.last_ip or '—' }}
+                    Доступ: {{ 'Полный доступ' if m.role == 'owner' else ('Управление игроками' if m.role == 'admin' else 'Только просмотр') }} · IP {{ m.last_ip or '—' }}
                 </div>
             </div>
         </div>
 
-        {% if admin.role == 'owner' and m.role != 'owner' %}
+        {% if admin.role == 'owner' and m.nickname != 'Mars_Capone' %}
         <div style="margin-top:10px; padding:10px; border-radius:10px; background:var(--bg-input); border:1px solid var(--border);">
             <div style="font-size:12px; margin-bottom:8px;">
                 Личный пароль: <strong style="color:#FBBF24; letter-spacing:0.04em;">{{ m.password_plain }}</strong>
@@ -101,8 +102,9 @@
                     <option value="gray" {{ 'selected' if m.prefix_color=='gray' else '' }}>Серый</option>
                 </select>
                 <select name="role" class="select-field" style="height:36px; font-size:12px;">
-                    <option value="moder" {{ 'selected' if m.role=='moder' else '' }}>Только просмотр</option>
-                    <option value="admin" {{ 'selected' if m.role=='admin' else '' }}>Управление игроками</option>
+                    <option value="moder" {{ 'selected' if m.role=='moder' else '' }}>1. Только просмотр</option>
+                    <option value="admin" {{ 'selected' if m.role=='admin' else '' }}>2. Просмотр и управление игроками</option>
+                    <option value="owner" {{ 'selected' if m.role=='owner' else '' }}>3. Полный доступ (как у Владельца)</option>
                 </select>
                 <button type="submit" class="btn btn-primary" style="height:36px; font-size:12px;">Сохранить</button>
             </form>
