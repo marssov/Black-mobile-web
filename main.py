@@ -480,11 +480,14 @@ async def players_page(request: Request, q: str = "", msg: str = ""):
                     player = await cur.fetchone()
 
                 if not player:
-                    await cur.execute("SELECT user_id FROM change_names WHERE name = %s LIMIT 1", (q_clean,))
-                    cn = await cur.fetchone()
-                    if cn:
-                        await cur.execute("SELECT * FROM accounts WHERE id = %s LIMIT 1", (cn["user_id"],))
-                        player = await cur.fetchone()
+                    try:
+                        await cur.execute("SELECT uid FROM change_names WHERE name = %s LIMIT 1", (q_clean,))
+                        cn = await cur.fetchone()
+                        if cn:
+                            await cur.execute("SELECT * FROM accounts WHERE id = %s LIMIT 1", (cn["uid"],))
+                            player = await cur.fetchone()
+                    except Exception:
+                        pass
 
                 if player:
                     pid = player["id"]
@@ -493,8 +496,11 @@ async def players_page(request: Request, q: str = "", msg: str = ""):
                         (player["reg_ip"], player["last_ip"], pid, player["last_ip"]),
                     )
                     twinks = await cur.fetchall()
-                    await cur.execute("SELECT name FROM change_names WHERE user_id = %s ORDER BY id DESC LIMIT 15", (pid,))
-                    old_names = await cur.fetchall()
+                    try:
+                        await cur.execute("SELECT name FROM change_names WHERE uid = %s ORDER BY id DESC LIMIT 15", (pid,))
+                        old_names = await cur.fetchall()
+                    except Exception:
+                        old_names = []
                     try:
                         await cur.execute("SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE user_id = %s AND status = 1", (pid,))
                         real_donated = int((await cur.fetchone())["s"])
@@ -618,7 +624,7 @@ async def ai_page(request: Request, q: str = ""):
                 top_rich = await cur.fetchall()
                 await cur.execute("SELECT id, name, level, (money + bank) AS wealth, reg_ip FROM accounts WHERE level <= 3 AND (money + bank) >= 1000000 ORDER BY wealth DESC LIMIT 10")
                 rich_new = await cur.fetchall()
-                await cur.execute("SELECT player_name, counterparty_name, amount, description, time FROM money_audit_log ORDER BY time DESC LIMIT 15")
+                await cur.execute("SELECT player_name, counterparty_name, amount, description FROM money_audit_log ORDER BY time DESC LIMIT 15")
                 last_money = await cur.fetchall()
                 await cur.execute("SELECT reg_ip, COUNT(*) AS cnt, GROUP_CONCAT(name SEPARATOR ', ') AS names FROM accounts WHERE reg_ip != '' GROUP BY reg_ip HAVING cnt >= 3 ORDER BY cnt DESC LIMIT 10")
                 twink_ips = await cur.fetchall()
@@ -634,44 +640,51 @@ async def ai_page(request: Request, q: str = ""):
                         if mentioned_player:
                             break
 
+        context_text = (
+            f"Топ-10 богачей: {top_rich}\n"
+            f"Богатые новички (1-3 LVL): {rich_new}\n"
+            f"Последние 15 переводов: {last_money}\n"
+            f"Подозрительные IP (>=3 акк): {twink_ips}\n"
+            f"Упомянутый игрок: {mentioned_player}"
+        )
+        system_prompt = (
+            "Ты — главный ИИ-следователь и аналитик логов RP-проекта BLACK MOBILE. "
+            "Отвечай строго на русском языке, чётко, структурированно и простым понятным текстом без SQL-кода и скобок. "
+            "Опирайся только на переданные данные из базы сервера."
+        )
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Данные сервера:\n{context_text}\n\nВопрос администратора: {q_clean}"},
+        ]
+
         api_key = os.getenv("GROQ_API_KEY", "").strip()
-        if not api_key:
-            answer = "API-ключ GROQ_API_KEY не найден в настройках Render. Добавьте ключ в Environment."
-        else:
-            context_text = (
-                f"Топ-10 богатейших игроков: {top_rich}\n"
-                f"Богатые новички (1-3 LVL с балансом > 1кк): {rich_new}\n"
-                f"Последние 15 денежных операций: {last_money}\n"
-                f"Подозрительные IP с >=3 аккаунтами: {twink_ips}\n"
-                f"Упомянутый в запросе игрок: {mentioned_player}"
-            )
-            system_prompt = (
-                "Ты — главный ИИ-следователь и аналитик логов RP-проекта BLACK MOBILE. "
-                "Отвечай строго на русском языке, чётко, структурированно и простым понятным текстом без SQL-кода и технических структур. "
-                "Опирайся только на переданные данные из базы сервера. Выделяй подозрительные моменты и давай конкретные выводы для администрации."
-            )
-            try:
-                async with httpx.AsyncClient(timeout=20.0) as client:
+        try:
+            async with httpx.AsyncClient(timeout=25.0) as client:
+                if api_key:
                     resp = await client.post(
                         "https://groq.com",
-                        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                        json={
-                            "model": "llama-3.3-70b-versatile",
-                            "messages": [
-                                {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": f"Данные сервера:\n{context_text}\n\nВопрос администратора: {q_clean}"},
-                            ],
-                            "temperature": 0.3,
-                            "max_tokens": 900,
+                        headers={
+                            "Authorization": f"Bearer {api_key}",
+                            "Content-Type": "application/json",
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                         },
+                        json={"model": "llama-3.3-70b-versatile", "messages": messages, "temperature": 0.3, "max_tokens": 900},
                     )
-                    data = resp.json()
-                    if "choices" in data:
-                        answer = data["choices"]["message"]["content"]
+                    if resp.status_code == 200 and "choices" in resp.json():
+                        answer = resp.json()["choices"]["message"]["content"]
+
+                if not answer:
+                    resp2 = await client.post(
+                        "https://pollinations.ai",
+                        headers={"Content-Type": "application/json"},
+                        json={"model": "openai", "messages": messages},
+                    )
+                    if resp2.status_code == 200 and "choices" in resp2.json():
+                        answer = resp2.json()["choices"]["message"]["content"]
                     else:
-                        answer = f"Ошибка ответа ИИ: {data.get('error', {}).get('message', 'Неизвестная ошибка')}"
-            except Exception as e:
-                answer = f"Не удалось связаться с сервером ИИ: {e}"
+                        answer = f"Сервер ИИ временно занят (код {resp2.status_code}). Попробуйте через 10 секунд."
+        except Exception as e:
+            answer = f"Ошибка связи с ИИ: {e}"
 
     return templates.TemplateResponse(request, "ai.html", {
         "admin": admin,
