@@ -2,40 +2,27 @@
 {% block content %}
 
 <div class="page-title">ИИ-следователь</div>
-<div class="page-sub">Умный анализ логов, связей по IP и поиск нарушителей</div>
+<div class="page-sub">Умный нейросетевой анализ логов и базы данных сервера</div>
 
 <div class="card">
-    <div class="card-label">Быстрые сценарии проверки</div>
+    <div class="card-label">Быстрые вопросы следователю</div>
     <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
-        <a href="/ai?preset=rich_newbies" class="btn btn-ghost" style="height:38px; font-size:12px;">Богатые новички (1-3 LVL)</a>
-        <a href="/ai?preset=big_transfers" class="btn btn-ghost" style="height:38px; font-size:12px;">Топ переводов за 24ч</a>
-        <a href="/ai?preset=twinks" class="btn btn-ghost" style="height:38px; font-size:12px;">Сетки твинков по IP</a>
+        <a href="/ai?q=Кто самые богатые игроки на сервере и есть ли среди них подозрительные?" class="btn btn-ghost" style="height:36px; font-size:12px;">Топ богачей и риски</a>
+        <a href="/ai?q=Проверь богатых новичков 1-3 уровня, откуда у них деньги?" class="btn btn-ghost" style="height:36px; font-size:12px;">Богатые новички</a>
+        <a href="/ai?q=Проанализируй последние денежные переводы на предмет покупки или продажи вирт" class="btn btn-ghost" style="height:36px; font-size:12px;">Анализ переводов</a>
+        <a href="/ai?q=Какие IP-адреса имеют больше всего твинков?" class="btn btn-ghost" style="height:36px; font-size:12px;">Сетки твинков</a>
     </div>
 
     <form method="get" action="/ai" style="display:flex; gap:8px;">
-        <input type="text" name="q" value="{{ q }}" placeholder="Введите ник или UID для расследования..." class="input-field" style="flex:1;">
-        <button type="submit" class="btn btn-danger">Проверить</button>
+        <input type="text" name="q" value="{{ q }}" placeholder="Задайте любой вопрос или напишите ник игрока..." class="input-field" style="flex:1;">
+        <button type="submit" class="btn btn-danger">Спросить ИИ</button>
     </form>
 </div>
 
-{% if report %}
-<div class="card" style="border-color: rgba(59, 130, 246, 0.4);">
-    <div class="card-label" style="color:#60A5FA;">Отчёт следователя · {{ report.title }}</div>
-    <div style="font-size:13px; line-height:1.65; white-space:pre-line;">{{ report.summary }}</div>
-
-    {% if report.rows %}
-    <div style="margin-top:14px; border-top:1px solid var(--border); padding-top:10px;">
-        {% for r in report.rows %}
-        <div class="data-row">
-            <div style="text-align:left;">
-                <div style="font-weight:700;">{{ r.title }}</div>
-                <div style="font-size:12px; color:var(--text-muted);">{{ r.sub }}</div>
-            </div>
-            <div class="data-val"><span class="badge badge-blue">{{ r.tag }}</span></div>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
+{% if answer %}
+<div class="card" style="border-color: rgba(59, 130, 246, 0.45);">
+    <div class="card-label" style="color:#60A5FA;">Заключение ИИ-следователя</div>
+    <div style="font-size:14px; line-height:1.65; white-space:pre-line;">{{ answer }}</div>
 </div>
 {% endif %}
 
