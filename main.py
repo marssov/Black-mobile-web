@@ -7,7 +7,7 @@ from typing import Optional
 import aiomysql
 import httpx
 from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -164,6 +164,39 @@ async def get_current_admin(request: Request) -> Optional[dict]:
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+@app.get("/manifest.json")
+async def pwa_manifest():
+    manifest = {
+        "name": "BLACK MOBILE Admin",
+        "short_name": "BM Admin",
+        "start_url": "/overview",
+        "display": "standalone",
+        "background_color": "#090A0F",
+        "theme_color": "#090A0F",
+        "orientation": "portrait",
+        "icons": [
+            {"src": "/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable"}
+        ],
+    }
+    import json
+    return Response(content=json.dumps(manifest, ensure_ascii=False), media_type="application/manifest+json")
+
+
+@app.get("/sw.js")
+async def pwa_sw():
+    js = "self.addEventListener('fetch', function(e) {});"
+    return Response(content=js, media_type="application/javascript")
+
+
+@app.get("/icon-512.svg")
+async def pwa_icon():
+    svg = '''<svg xmlns="http://w3.org" width="512" height="512" viewBox="0 0 512 512">
+    <rect width="512" height="512" rx="110" fill="#090A0F"/>
+    <rect x="24" y="24" width="464" height="464" rx="92" fill="none" stroke="#EF4444" stroke-width="14"/>
+    <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#FFFFFF" font-family="Arial, sans-serif" font-weight="900" font-size="190">BM</text>
+    </svg>'''
+    return Response(content=svg, media_type="image/svg+xml")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -720,7 +753,7 @@ async def ai_page(request: Request, q: str = ""):
                     resp = await client.post(
                         "/".join([
                             "https:", "", "generativelanguage." + "googleapis." + "com",
-                            "v1beta", "models", "gemini-2.5-flash:generateContent?key=" + gemini_key
+                            "v1beta", "models", "gemini-3.8-flash:generateContent?key=" + gemini_key
                         ]),
                         headers={"Content-Type": "application/json"},
                         json={
