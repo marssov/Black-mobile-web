@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{{ project_name }} · Панель управления</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#090A0F">
     <link rel="preconnect" href="https://googleapis.com">
     <link rel="preconnect" href="https://gstatic.com" crossorigin>
     <link href="https://googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -224,5 +226,6 @@
             <div style="margin-top:4px;">gs356095 · MySQL · Панель управления сервером</div>
         </div>
     </footer>
+    <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }</script>
 </body>
 </html>
